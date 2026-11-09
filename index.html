@@ -1,0 +1,2041 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ヴォーカルトレーナー</title>
+<meta name="description" content="マイクで声の高さを測って、音合わせ・音程・五線譜を見て歌う（視唱）・ロングトーンを練習。声はこの端末の中だけで解析します。">
+<link rel="canonical" href="https://vocal-trainer.habatakijuku.com/">
+<meta property="og:title" content="ヴォーカルトレーナー">
+<meta property="og:description" content="マイクで声の高さを測って、音合わせ・音程・五線譜を見て歌う（視唱）・ロングトーンを練習。声はこの端末の中だけで解析します。">
+<meta property="og:url" content="https://vocal-trainer.habatakijuku.com/">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23c2367a'/%3E%3Crect x='15' y='7' width='10' height='17' rx='5' fill='%23fff'/%3E%3Cpath d='M11 19a9 9 0 0 0 18 0M20 28v5M15 33h10' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+/* ---- デザインの基本（色・文字・角の丸み） ---- */
+:root {
+  --bg: #fbf2f6;
+  --paper: #ffffff;
+  --ink: #2d1622;
+  --muted: #7a5d6b;
+  --line: #f0dce6;
+  --accent: #c2367a;
+  --accent-dark: #93205a;
+  --accent-soft: #fbe5ef;
+  --accent-bright: #ff7ab8;
+  --gold: #ffb020;
+  --gold-dark: #d98e00;
+  --ok: #16a34a;
+  --ng: #e5484d;
+  --play-bg: #1b0d15;
+  --play-panel: #2b1521;
+  --play-ink: #fff1f7;
+  --play-muted: #c5a2b4;
+  --radius: 20px;
+  --shadow: 0 1px 2px rgba(45, 22, 34, .06), 0 8px 24px rgba(45, 22, 34, .07);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 16px; line-height: 1.65; overflow-x: hidden;
+}
+a { color: var(--accent); }
+h1, h2, h3 { line-height: 1.35; }
+[hidden], .mode-off { display: none !important; }
+
+/* ---- ボタン：押すと沈む立体の形 ---- */
+button {
+  font: inherit; font-weight: 700; cursor: pointer; border: 0; color: #fff; background: var(--accent);
+  border-radius: 14px; padding: 10px 20px; box-shadow: 0 4px 0 var(--accent-dark);
+  transition: transform .06s, box-shadow .06s, background .15s; -webkit-tap-highlight-color: transparent;
+}
+button:hover:not(:disabled) { background: #d2448a; }
+button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent-dark); }
+button:disabled { cursor: not-allowed; opacity: .55; }
+button.ghost { background: var(--paper); color: var(--accent); box-shadow: 0 0 0 2px var(--line) inset, 0 3px 0 var(--line); }
+button.ghost:hover:not(:disabled) { background: var(--accent-soft); }
+button.ghost:active:not(:disabled) { box-shadow: 0 0 0 2px var(--line) inset, 0 0 0 var(--line); }
+button.gold { background: var(--gold); color: #3a2600; box-shadow: 0 4px 0 var(--gold-dark); }
+button.gold:hover:not(:disabled) { background: #ffbc3d; }
+button.big { padding: 14px 28px; font-size: 1.08rem; border-radius: 16px; }
+button.icon { padding: 0; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 1.15rem; }
+button.link { background: none; box-shadow: none; color: var(--accent); padding: 0; text-decoration: underline; font-weight: 500; border-radius: 0; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+select, input[type="number"] {
+  font: inherit; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--ink);
+}
+input[type="range"] { accent-color: var(--accent); }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
+
+/* ---- 画面の骨組み：上のバー・タブ・中身 ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; background: rgba(251, 242, 246, .9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-width: 0; }
+.brand svg { flex: none; }
+.brand b { font-size: 1.12rem; letter-spacing: .04em; white-space: nowrap; }
+.brand small { display: block; font-size: .7rem; color: var(--muted); font-weight: 500; line-height: 1.2; }
+.topbar .sp { flex: 1; }
+.mic-status {
+  font-size: .78rem; font-weight: 700; padding: 5px 12px; border-radius: 999px; white-space: nowrap; max-width: 46vw;
+  overflow: hidden; text-overflow: ellipsis; background: var(--paper); color: var(--muted); box-shadow: 0 0 0 1px var(--line) inset;
+}
+.mic-status:hover:not(:disabled) { background: var(--accent-soft); }
+.mic-status:active:not(:disabled) { transform: none; box-shadow: 0 0 0 1px var(--line) inset; }
+.mic-status::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c9b3be; margin-right: 6px; vertical-align: 1px; }
+.mic-status.on { color: var(--ok); }
+.mic-status.on::before { background: var(--ok); box-shadow: 0 0 0 3px rgba(22, 163, 74, .2); }
+.mic-status.off::before { background: var(--ng); }
+.tabs { display: flex; }
+.tabs button {
+  background: none; box-shadow: none; color: var(--muted); border-radius: 14px; padding: 6px 10px;
+  display: grid; justify-items: center; gap: 2px; font-size: .74rem; font-weight: 700;
+}
+.tabs button svg { width: 24px; height: 24px; }
+.tabs button:hover:not(:disabled) { background: var(--accent-soft); }
+.tabs button[aria-current="page"] { color: var(--accent); }
+.tabs button:active:not(:disabled) { transform: none; box-shadow: none; }
+.view { display: none; }
+body[data-view="home"] #homeView, body[data-view="play"] #playView, body[data-view="records"] #recordsView { display: block; }
+.page { max-width: 980px; margin: 0 auto; padding: 8px 16px 40px; }
+.page > h1 { font-size: 1.6rem; margin: 8px 0 4px; }
+.page > .lead { color: var(--muted); margin: 0 0 18px; }
+.card { background: var(--paper); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+.section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 28px 0 12px; }
+.section-title h2 { font-size: 1.2rem; margin: 0; }
+.section-title span { color: var(--muted); font-size: .88rem; }
+footer { text-align: center; font-size: .8rem; color: var(--muted); padding: 0 16px 100px; }
+footer a { color: var(--muted); }
+/* スマホ：タブは画面の下。PC：タブは左 */
+@media (max-width: 899px) {
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; justify-content: space-around;
+    background: rgba(255, 255, 255, .96); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 -1px 0 var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tabs button { flex: 1; }
+  .brand small { display: none; }
+}
+@media (min-width: 900px) {
+  body { padding-left: 96px; }
+  .tabs {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 96px; z-index: 30; flex-direction: column; gap: 6px;
+    align-items: center; padding: 84px 8px 16px; background: var(--paper); box-shadow: 1px 0 0 var(--line);
+  }
+  .tabs button { width: 76px; padding: 10px 4px; }
+  footer { padding-bottom: 32px; }
+}
+/* 練習中は、まわりのものを隠して声のグラフと楽譜だけにする */
+body[data-view="play"] { background: var(--play-bg); padding-left: 0; }
+body[data-view="play"] .tabs, body[data-view="play"] .topbar, body[data-view="play"] footer { display: none; }
+
+/* ---- ホーム ---- */
+.hello { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; margin: 8px 0 16px; }
+.hello h1 { font-size: 1.55rem; margin: 0; }
+.hello p { margin: 0; color: var(--muted); }
+.home-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
+.continue {
+  position: relative; overflow: hidden; color: #fff; border-radius: 24px; padding: 24px;
+  background: radial-gradient(120% 140% at 100% 0%, #ff8fc4 0%, #c2367a 48%, #7a1648 100%);
+  box-shadow: 0 12px 32px rgba(147, 32, 90, .32); display: grid; gap: 6px; align-content: start; min-height: 210px;
+}
+.continue::after {
+  content: ""; position: absolute; right: -10px; bottom: -30px; width: 210px; height: 230px; opacity: .14;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='15' y='7' width='10' height='17' rx='5' fill='white'/%3E%3Cpath d='M11 19a9 9 0 0 0 18 0M20 28v5M15 33h10' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+.continue .kicker { font-size: .82rem; font-weight: 700; opacity: .85; letter-spacing: .08em; }
+.continue h2 { margin: 0; font-size: 1.6rem; }
+.continue p { margin: 0 0 8px; opacity: .92; position: relative; z-index: 1; }
+.continue .stars-line { font-size: 1.15rem; letter-spacing: .1em; color: #ffd36b; }
+.continue button { justify-self: start; position: relative; z-index: 1; margin-top: 6px; }
+.continue button.big { background: #fff; color: var(--accent-dark); box-shadow: 0 4px 0 #f3bcd6; }
+.continue button.big:hover { background: #fff5f9; }
+.today { display: grid; gap: 14px; align-content: start; }
+.today-row { display: flex; align-items: center; gap: 16px; }
+.ring { position: relative; width: 92px; height: 92px; flex: none; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .track { stroke: var(--accent-soft); }
+.ring .fill { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .6s; }
+.ring.met .fill { stroke: var(--gold); }
+.ring div { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.1; }
+.ring b { font-size: 1.45rem; }
+.ring small { font-size: .7rem; color: var(--muted); }
+.today h3 { margin: 0; font-size: 1rem; }
+.today p { margin: 0; font-size: .88rem; color: var(--muted); }
+.minis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mini { background: var(--bg); border-radius: 14px; padding: 10px 6px; text-align: center; line-height: 1.25; }
+.mini b { display: block; font-size: 1.3rem; }
+.mini span { font-size: .72rem; color: var(--muted); }
+.mini .gold { color: var(--gold-dark); }
+.voice-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--accent-soft); border-radius: 14px; padding: 8px 12px; font-size: .9rem; }
+.voice-row span { color: var(--muted); font-size: .8rem; font-weight: 700; }
+.voice-row b { flex: 1; }
+
+/* ステージの道のり */
+.path-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .path-wrap { grid-template-columns: minmax(0, 1fr); } }
+.lane-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.lane-head .ic { width: 44px; height: 44px; border-radius: 14px; flex: none; display: grid; place-items: center; font-size: 1.35rem; }
+.lane h3 { margin: 0; font-size: 1.05rem; }
+.lane-head p { margin: 0; font-size: .82rem; color: var(--muted); line-height: 1.45; }
+.lane-head .cnt { margin-left: auto; font-size: .82rem; font-weight: 700; color: var(--gold-dark); white-space: nowrap; }
+.path { position: relative; display: grid; gap: 2px; padding: 4px 0; }
+.node {
+  position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center;
+  background: none; box-shadow: none; color: var(--ink); padding: 5px 8px; border-radius: 16px; text-align: left; font-weight: 500;
+}
+.node:hover:not(:disabled) { background: var(--accent-soft); }
+.node:active:not(:disabled) { transform: none; box-shadow: none; }
+.node:not(:last-child)::after {
+  content: ""; position: absolute; left: 32px; top: 61px; height: 10px; width: 4px; border-radius: 2px; background: var(--line);
+}
+.node.done:not(:last-child)::after { background: var(--accent); }
+.dot {
+  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.15rem; font-weight: 700;
+  background: var(--paper); color: var(--accent); box-shadow: 0 0 0 3px var(--line) inset, 0 4px 0 var(--line);
+}
+.node.done .dot { background: var(--accent); color: #fff; box-shadow: 0 4px 0 var(--accent-dark); }
+.node.next .dot { background: var(--gold); color: #3a2600; box-shadow: 0 4px 0 var(--gold-dark), 0 0 0 6px rgba(255, 176, 32, .25); animation: pulse 2s infinite; }
+.node.later .dot { background: #f6eef2; color: #b39dab; box-shadow: 0 4px 0 #ecdfe6; }
+.node .nm { font-weight: 700; display: block; }
+.node .st { font-size: .85rem; letter-spacing: .08em; color: var(--gold); }
+.node .st.none { color: #e2d0d9; }
+.node .sub { display: block; font-size: .76rem; color: var(--muted); line-height: 1.4; }
+.node.later .nm { color: #957a88; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 4px 0 var(--gold-dark), 0 0 0 6px rgba(255, 176, 32, .25); } 50% { box-shadow: 0 4px 0 var(--gold-dark), 0 0 0 12px rgba(255, 176, 32, .08); } }
+.extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.tile {
+  display: flex; gap: 14px; align-items: center; text-align: left; color: var(--ink); background: var(--paper);
+  border-radius: 18px; padding: 14px 16px; box-shadow: 0 0 0 2px var(--line) inset, 0 4px 0 var(--line); font-weight: 500;
+}
+.tile:hover:not(:disabled) { background: var(--accent-soft); }
+.tile:active:not(:disabled) { box-shadow: 0 0 0 2px var(--line) inset, 0 1px 0 var(--line); }
+.tile .ic { width: 48px; height: 48px; border-radius: 14px; flex: none; display: grid; place-items: center; font-size: 1.5rem; }
+.tile b { display: block; }
+.tile small { color: var(--muted); font-size: .8rem; line-height: 1.4; display: block; }
+.siblings { margin-top: 28px; border-radius: 24px; padding: 20px 24px; color: #fff; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; background: linear-gradient(120deg, #2d1622 0%, #5a1d3c 60%, #c2367a 100%); box-shadow: var(--shadow); }
+.siblings div { flex: 1 1 260px; }
+.siblings h2 { margin: 0 0 2px; font-size: 1.1rem; }
+.siblings p { margin: 0; opacity: .85; font-size: .9rem; }
+.siblings a { color: #fff; font-weight: 700; text-decoration: none; background: rgba(255, 255, 255, .14); border-radius: 999px; padding: 6px 14px; white-space: nowrap; }
+.siblings a:hover { background: rgba(255, 255, 255, .24); }
+
+/* ---- 記録 ---- */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; }
+.stat { background: var(--bg); border-radius: 16px; padding: 14px 6px; }
+.stat b { display: block; font-size: 1.5rem; }
+.stat span { font-size: .78rem; color: var(--muted); }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.mode-recs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.mode-rec { display: grid; gap: 8px; align-content: start; }
+.mode-rec .lane-head { margin: 0; }
+.bar { height: 8px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.mode-rec .meta { display: flex; justify-content: space-between; font-size: .82rem; color: var(--muted); }
+.weak { font-size: .86rem; color: var(--muted); }
+.weak strong { color: var(--ng); }
+.weak .none { color: var(--ok); }
+
+/* ---- 練習の画面（暗い背景に、声のグラフと楽譜） ---- */
+.play { max-width: 960px; margin: 0 auto; padding: 10px 16px 28px; color: var(--play-ink); }
+.playbar { display: flex; align-items: center; gap: 12px; padding: 4px 0 12px; }
+.playbar button.icon { background: rgba(255, 255, 255, .08); color: var(--play-ink); box-shadow: none; flex: none; }
+.playbar button.icon:hover { background: rgba(255, 255, 255, .16); }
+.playbar .ttl { min-width: 0; flex: 1; display: grid; gap: 6px; }
+.playbar .ttl b { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.prog i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #e0468f, #ffa6cf); transition: width .3s; }
+.play-score { text-align: right; line-height: 1.15; flex: none; font-variant-numeric: tabular-nums; min-width: 64px; }
+.play-score b { display: block; font-size: 1.35rem; }
+.play-score b small { font-size: .8rem; color: var(--play-muted); font-weight: 500; }
+.play-score > small { color: var(--gold); font-size: .78rem; font-weight: 700; }
+.stage { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; justify-items: center; }
+.stage > * { max-width: 100%; }
+.intro {
+  width: 100%; max-width: 620px; background: var(--play-panel); border-radius: 22px; padding: 18px 20px; text-align: center;
+  display: grid; gap: 12px; justify-items: center; box-shadow: 0 0 0 1px rgba(255, 255, 255, .06) inset;
+}
+.stage-info { font-size: .9rem; color: var(--play-muted); }
+.stage-info b { color: var(--play-ink); font-size: 1.05rem; display: block; margin-bottom: 2px; }
+.stage-info .rule { display: inline-block; margin-top: 6px; font-size: .8rem; font-weight: 700; color: var(--gold); background: rgba(255, 176, 32, .12); border-radius: 999px; padding: 2px 12px; }
+.mic-warn { font-size: .86rem; color: #ffb4b7; }
+.bpm { display: flex; align-items: center; gap: 6px; }
+.bpm input { width: 4.4em; text-align: center; padding: 6px; background: rgba(0, 0, 0, .25); color: var(--play-ink); border-color: rgba(255, 255, 255, .14); }
+.bpm span { font-size: .85rem; color: var(--play-muted); }
+.play button.ghost, .play button.dark {
+  background: rgba(255, 255, 255, .08); color: var(--play-ink); box-shadow: 0 0 0 1px rgba(255, 255, 255, .16) inset;
+}
+.play button.ghost:hover:not(:disabled), .play button.dark:hover:not(:disabled) { background: rgba(255, 255, 255, .16); }
+.play button.ghost:active:not(:disabled) { box-shadow: 0 0 0 1px rgba(255, 255, 255, .16) inset; }
+.bpm button { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
+.cue { font-size: .9rem; font-weight: 700; border-radius: 999px; padding: 3px 14px; min-height: 1.9em; }
+.cue.listen { background: rgba(255, 176, 32, .16); color: #ffd36b; }
+.cue.sing { background: rgba(255, 122, 184, .18); color: var(--accent-bright); }
+.cue:empty { visibility: hidden; }
+.prompt { font-size: 1.05rem; text-align: center; min-height: 1.6em; color: var(--play-ink); }
+.prompt .big { font-size: 2.5rem; font-weight: 700; color: var(--accent-bright); margin: 0 .12em; line-height: 1.2; }
+.prompt small { display: block; font-size: .88rem; color: var(--play-muted); }
+.sheet { width: 100%; max-width: 760px; background: #fffefb; border-radius: 22px; padding: 12px; box-shadow: 0 18px 40px rgba(0, 0, 0, .35); display: grid; justify-items: center; overflow-x: auto; }
+#score { width: 100%; display: grid; justify-items: center; }
+#score svg { display: block; max-width: 100%; height: auto; }
+body[data-mode="staff"] .sheet { max-width: 360px; }
+/* 声の高さの表示 */
+.meter { width: 100%; max-width: 760px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; background: var(--play-panel); border-radius: 18px; padding: 10px 16px; }
+.read { min-width: 110px; text-align: center; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.read b { display: block; font-size: 1.9rem; }
+.read span { font-size: .82rem; color: var(--play-muted); }
+.read.in b { color: #4ade80; }
+.needle-track { position: relative; height: 26px; border-radius: 999px; background: linear-gradient(90deg, rgba(229, 72, 77, .35), rgba(255, 176, 32, .25) 30%, rgba(74, 222, 128, .35) 45%, rgba(74, 222, 128, .35) 55%, rgba(255, 176, 32, .25) 70%, rgba(229, 72, 77, .35)); }
+.needle-track::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: rgba(255, 255, 255, .7); }
+.needle-track span { position: absolute; top: 100%; font-size: .68rem; color: var(--play-muted); transform: translateX(-50%); white-space: nowrap; }
+.needle-track span:first-of-type { transform: none; }
+.needle-track span:last-of-type { transform: translateX(-100%); }
+#needle { position: absolute; top: 3px; bottom: 3px; width: 8px; margin-left: -4px; border-radius: 4px; background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, .7); left: 50%; transition: left .06s linear; }
+#needle.hide { opacity: 0; }
+.trail-box { width: 100%; max-width: 760px; background: #12080e; border-radius: 18px; padding: 6px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .06) inset, 0 18px 40px rgba(0, 0, 0, .3); }
+#trail { display: block; width: 100%; height: 220px; }
+@media (max-width: 560px) { #trail { height: 180px; } }
+.feedback { min-height: 1.8em; font-size: 1.05rem; font-weight: 700; text-align: center; color: var(--play-ink); }
+.feedback.ok { color: #4ade80; }
+.feedback.good { color: #ffd36b; }
+.feedback.ng { color: #ff9ca0; }
+.kb-note { font-size: .78rem; color: var(--play-muted); text-align: center; margin: 0; max-width: 640px; }
+/* 判定の表示 */
+#judgeLayer { position: absolute; left: 0; right: 0; top: 18%; display: grid; justify-items: center; pointer-events: none; z-index: 5; }
+.judge { text-align: center; animation: judgeUp .9s ease-out forwards; text-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
+.judge b { display: block; font-size: 2rem; letter-spacing: .04em; }
+.judge span { display: inline-block; font-size: .9rem; font-weight: 700; color: var(--ink); background: rgba(255, 255, 255, .92); border-radius: 999px; padding: 0 10px; text-shadow: none; }
+.judge.perfect b { color: var(--gold); font-size: 2.3rem; }
+.judge.good b { color: #4ade80; }
+.judge.miss b { color: #ff7b7f; }
+@keyframes judgeUp {
+  0% { opacity: 0; transform: translateY(12px) scale(.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1.12); }
+  30% { transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-34px); }
+}
+/* 結果 */
+.result {
+  width: 100%; max-width: 560px; display: grid; gap: 8px; justify-items: center; text-align: center;
+  background: var(--paper); color: var(--ink); border-radius: 26px; padding: 26px 20px 22px; box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+  animation: resultIn .35s ease-out both;
+}
+@keyframes resultIn { from { opacity: 0; transform: translateY(16px) scale(.97); } }
+.result h2 { margin: 4px 0 0; font-size: 1.6rem; }
+.result.fail h2 { color: var(--ng); }
+.result p { margin: 0; font-size: .95rem; }
+.result .sub { color: var(--muted); font-size: .86rem; }
+.result .controls { margin-top: 10px; }
+.play .result button.ghost { background: var(--paper); color: var(--accent); box-shadow: 0 0 0 2px var(--line) inset, 0 3px 0 var(--line); }
+.play .result button.ghost:hover:not(:disabled) { background: var(--accent-soft); }
+.result .best { font-style: normal; font-weight: 700; color: #fff; background: var(--ok); border-radius: 999px; padding: 2px 12px; font-size: .85rem; animation: starPop .5s 1s both; }
+.result .stars { font-size: 3rem; line-height: 1; letter-spacing: .12em; margin: 0; }
+.stars span { color: #efe2e8; display: inline-block; }
+.stars span.on { color: var(--gold); text-shadow: 0 4px 0 var(--gold-dark); animation: starPop .45s var(--d) both; }
+@keyframes starPop { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 70% { transform: scale(1.35); opacity: 1; } 100% { transform: scale(1); } }
+
+/* ---- 下から出る画面（設定・使い方・声域） ---- */
+dialog.sheet-dlg {
+  border: 0; padding: 0; width: min(600px, 100vw); max-width: 100vw; max-height: min(88vh, 900px); border-radius: 26px;
+  background: var(--paper); color: var(--ink); box-shadow: 0 30px 80px rgba(40, 10, 26, .35);
+}
+dialog.sheet-dlg::backdrop { background: rgba(30, 10, 20, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+@media (max-width: 600px) {
+  dialog.sheet-dlg { margin: auto 0 0; border-radius: 26px 26px 0 0; max-height: 92vh; }
+}
+dialog.sheet-dlg[open] { animation: sheetIn .28s ease-out; }
+@keyframes sheetIn { from { transform: translateY(30px); opacity: 0; } }
+.dlg-in { padding: 22px 22px calc(22px + env(safe-area-inset-bottom)); }
+.dlg-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.dlg-head h2 { margin: 0; font-size: 1.25rem; flex: 1; }
+.dlg-head button.icon { background: var(--bg); color: var(--muted); box-shadow: none; width: 36px; height: 36px; font-size: 1rem; }
+.settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; }
+@media (max-width: 480px) { .settings { grid-template-columns: minmax(0, 1fr); } }
+.settings h3 { grid-column: 1 / -1; margin: 6px 0 -6px; font-size: .95rem; color: var(--muted); }
+.field { display: grid; gap: 6px; font-size: .92rem; align-content: start; }
+.field > span { color: var(--muted); font-weight: 700; font-size: .84rem; }
+.field small { color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.field.wide { grid-column: 1 / -1; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.check { display: flex; gap: 10px; align-items: center; font-size: .94rem; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.monitor { font-size: .88rem; color: var(--ink); background: var(--accent-soft); border-radius: 12px; padding: 8px 12px; min-height: 2.2em; font-variant-numeric: tabular-nums; display: grid; gap: 6px; }
+.level { height: 8px; border-radius: 999px; background: #fff; overflow: hidden; position: relative; }
+.level i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; }
+.level em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+.mic-detail { font-size: .9rem; }
+.mic-detail p { margin: 4px 0 0; color: var(--muted); font-size: .86rem; }
+.help h3 { font-size: 1rem; margin: 16px 0 4px; }
+.help p, .help ul { margin: 0 0 8px; font-size: .93rem; }
+.help ul { padding-left: 1.2em; }
+.help table { border-collapse: collapse; font-size: .88rem; width: 100%; margin-bottom: 8px; }
+.help td, .help th { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+/* 声の種類 */
+.voices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.voices button { display: grid; gap: 2px; text-align: left; color: var(--ink); background: var(--paper); box-shadow: 0 0 0 2px var(--line) inset, 0 4px 0 var(--line); padding: 12px 14px; font-weight: 500; }
+.voices button:hover:not(:disabled) { background: var(--accent-soft); }
+.voices button b { font-size: 1.05rem; }
+.voices button small { color: var(--muted); font-size: .78rem; }
+.voices button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--accent) inset, 0 4px 0 var(--accent-dark); }
+/* 声域を測る */
+.rg-live { text-align: center; font-size: 2.6rem; font-weight: 700; color: var(--accent); line-height: 1.2; min-height: 1.3em; }
+.rg-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+.rg-vals div { background: var(--bg); border-radius: 14px; padding: 10px; text-align: center; font-size: .82rem; color: var(--muted); }
+.rg-vals div.cur { box-shadow: 0 0 0 3px var(--accent) inset; }
+.rg-vals b { display: block; font-size: 1.5rem; color: var(--ink); }
+.rg-msg { min-height: 3.2em; }
+@media (hover: none) and (pointer: coarse) { .pc-only { display: none; } }
+@media (max-width: 480px) {
+  .topbar { gap: 8px; }
+  .brand b { font-size: .92rem; letter-spacing: 0; }
+  .mic-status { max-width: none; flex: none; padding: 5px 10px; }
+}
+@media (max-width: 560px) {
+  .prompt .big { font-size: 2rem; }
+  .meter { gap: 10px; padding: 10px 12px; }
+  .read { min-width: 84px; }
+  .read b { font-size: 1.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .judge, .stars span.on, .result .best, .node.next .dot, .result, dialog.sheet-dlg[open] { animation: none; }
+}
+</style>
+</head>
+<body data-view="home" data-mode="match">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 40 40"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8fc4"/><stop offset="1" stop-color="#93205a"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#lg)"/><rect x="15" y="7" width="10" height="17" rx="5" fill="#fff"/><path d="M11 19a9 9 0 0 0 18 0M20 28v5M15 33h10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+</svg>
+
+<header class="topbar">
+  <a class="brand" href="#" data-goto-view="home" aria-label="ヴォーカルトレーナー ホーム">
+    <svg width="36" height="36"><use href="#logo"/></svg>
+    <span><b>ヴォーカルトレーナー</b><small>羽ばたき塾</small></span>
+  </a>
+  <span class="sp"></span>
+  <button type="button" id="micStatus" class="mic-status" aria-live="polite">マイク オフ</button>
+  <button type="button" class="icon ghost" id="settingsBtn" aria-label="設定">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<nav class="tabs" aria-label="画面">
+  <button type="button" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</button>
+  <button type="button" data-tab="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>練習</button>
+  <button type="button" data-tab="records"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>記録</button>
+</nav>
+
+<!-- ホーム -->
+<section id="homeView" class="view" aria-label="ホーム">
+  <div class="page">
+    <div class="hello">
+      <div><h1 id="helloTitle">今日も、声をまっすぐ</h1><p>マイクで声の高さを測って、合っているかをその場で見せます。</p></div>
+      <button type="button" class="link" data-open="helpDlg">使い方とクリア条件</button>
+    </div>
+    <div class="home-grid">
+      <div id="continueCard" class="continue"></div>
+      <div class="card today">
+        <div class="today-row">
+          <div id="goalRing" class="ring"></div>
+          <div><h3>今日の目標</h3><p id="goalText"></p></div>
+        </div>
+        <div class="minis">
+          <div class="mini"><b id="miniStreak">0</b><span>🔥 連続日数</span></div>
+          <div class="mini"><b id="miniStars" class="gold">0</b><span>★ 合計</span></div>
+          <div class="mini"><b id="miniClear">0</b><span>🏁 クリア</span></div>
+        </div>
+        <div class="voice-row"><span>声域</span><b id="voiceText"></b><button type="button" class="link" data-open="obDlg">変える</button></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>ステージ</h2><span>どの道から始めてもかまいません</span></div>
+    <div id="paths" class="path-wrap"></div>
+
+    <div class="section-title"><h2>ほかの練習</h2></div>
+    <div id="extras" class="extras"></div>
+
+    <div class="siblings">
+      <div><h2>楽器のトレーナー</h2><p>同じしくみで、ギター・ピアノ・ドラムも練習できます。</p></div>
+      <a href="https://guitar-trainer.habatakijuku.com/">🎸 ギタートレーナー</a>
+      <a href="https://piano-trainer.habatakijuku.com/">🎹 読譜トレーナー</a>
+      <a href="https://drum-trainer.habatakijuku.com/">🥁 ドラムトレーナー</a>
+    </div>
+  </div>
+</section>
+
+<!-- 練習 -->
+<section id="playView" class="view" aria-label="練習">
+  <div class="play">
+    <div class="playbar">
+      <button type="button" class="icon" id="playClose" aria-label="ホームへ戻る">✕</button>
+      <div class="ttl"><b id="playTitle"></b><div class="prog" role="progressbar" aria-label="進み具合"><i id="playProg"></i></div></div>
+      <div class="play-score"><b id="count"></b><small id="combo"></small></div>
+    </div>
+    <section class="stage" aria-label="出題">
+      <div id="judgeLayer" aria-hidden="true"></div>
+      <div id="result" class="result" aria-live="polite" hidden></div>
+      <div id="intro" class="intro">
+        <div id="stageInfo" class="stage-info" aria-live="polite"></div>
+        <div class="controls" id="bpmRow">
+          <div class="bpm">
+            <button id="bpmDown" class="ghost" type="button" aria-label="テンポを下げる">−</button>
+            <input id="bpmInput" type="number" min="40" max="160" step="1" aria-label="テンポ（BPM）">
+            <button id="bpmUp" class="ghost" type="button" aria-label="テンポを上げる">＋</button>
+            <span>BPM（音階のテンポ）</span>
+          </div>
+        </div>
+        <div id="micWarn" class="mic-warn" hidden></div>
+        <div class="controls">
+          <button id="startBtn" class="gold big" type="button">▶ スタート</button>
+        </div>
+        <div class="kb-note pc-only">Enter でスタート、R でもう一度聞く、Esc でやめる</div>
+      </div>
+      <div id="cue" class="cue" aria-live="polite"></div>
+      <div id="prompt" class="prompt" aria-live="polite"></div>
+      <div class="sheet" id="sheetBox"><div id="score" role="img" aria-label="楽譜"></div></div>
+      <div class="meter" aria-hidden="true">
+        <div class="read" id="read"><b id="readNote">—</b><span id="readCents">声を待っています</span></div>
+        <div class="needle-track"><i id="needle" class="hide"></i><span style="left:0">低い</span><span style="left:50%">ぴったり</span><span style="left:100%">高い</span></div>
+      </div>
+      <div class="trail-box"><canvas id="trail" aria-label="声の高さのグラフ"></canvas></div>
+      <div id="feedback" class="feedback" aria-live="off"></div>
+      <div class="controls">
+        <button id="hintBtn" class="ghost" type="button" hidden>♪ もう一度聞く</button>
+        <button id="stopBtn" class="ghost" type="button" hidden>■ やめる</button>
+        <button id="demoBtn" class="ghost" type="button">♪ お手本を聞く</button>
+      </div>
+      <p id="inputNote" class="kb-note"></p>
+    </section>
+  </div>
+</section>
+
+<!-- 記録 -->
+<section id="recordsView" class="view" aria-label="記録">
+  <div class="page">
+    <h1>記録</h1>
+    <p class="lead">この端末に保存された、これまでの練習の記録です。</p>
+    <div class="card"><div id="stats" class="stats"></div></div>
+    <div class="section-title"><h2>モードごと</h2><span>苦手は、時間内に合わせられた割合が低いもの</span></div>
+    <div id="modeRecs" class="mode-recs"></div>
+  </div>
+</section>
+
+<footer>マイクは Chrome・Edge・Safari で使えます。ヘッドホンを使うと、お手本の音を声と取り違えません。声はこの端末の中だけで解析し、録音もせず、どこにも送りません。<br><a href="https://habatakijuku.com/">羽ばたき塾</a>・<a href="https://guitar-trainer.habatakijuku.com/">ギタートレーナー</a>・<a href="https://piano-trainer.habatakijuku.com/">読譜トレーナー</a>・<a href="https://drum-trainer.habatakijuku.com/">ドラムトレーナー</a></footer>
+
+<!-- 設定 -->
+<dialog id="settingsDlg" class="sheet-dlg" aria-labelledby="settingsTitle">
+  <div class="dlg-in">
+    <div class="dlg-head"><h2 id="settingsTitle">設定</h2><button type="button" class="icon" data-close aria-label="閉じる">✕</button></div>
+    <section class="settings" aria-label="設定">
+      <h3>マイク</h3>
+      <div class="field wide">
+        <span>状態</span>
+        <div id="micDetail" class="mic-detail"></div>
+        <div class="row"><button id="micOnBtn" type="button" class="ghost">🎤 マイクをオンにする</button></div>
+      </div>
+      <div class="field wide">
+        <span>マイクの確認</span>
+        <div class="monitor"><div class="level"><i id="levelBar"></i><em id="gateMark"></em></div><div id="micMonitor">声を出すと、ここに音の大きさと高さが出ます。</div></div>
+      </div>
+      <label class="field wide">
+        <span>拾う声の大きさ（黒い線より大きい音だけ測る）</span>
+        <input id="gateInput" type="range" min="0.003" max="0.06" step="0.001">
+        <small>左ほど小さい声も拾います。何も歌っていないのに音名が出るときは右へ、声を出しても出ないときは左へ。</small>
+      </label>
+      <h3>声域と楽譜</h3>
+      <label class="field">
+        <span>声の種類</span>
+        <select id="voiceSel"></select>
+      </label>
+      <div class="field">
+        <span>練習に使う音域</span>
+        <div class="row"><select id="loSel" aria-label="いちばん低い音"></select>〜<select id="hiSel" aria-label="いちばん高い音"></select></div>
+        <button type="button" class="link" data-range>マイクで測る</button>
+      </div>
+      <label class="field wide">
+        <span>楽譜の記号</span>
+        <select id="clefSel">
+          <option value="auto">声域に合わせる（標準）</option>
+          <option value="treble">ト音記号</option>
+          <option value="treble8vb">ト音記号（1オクターブ下で歌う・男声）</option>
+          <option value="bass">ヘ音記号</option>
+        </select>
+      </label>
+      <h3>判定</h3>
+      <label class="field">
+        <span>合っているとみなす幅</span>
+        <select id="tolSel">
+          <option value="50">甘め（±50セント）</option>
+          <option value="30">ふつう（±30セント）</option>
+          <option value="20">きびしめ（±20セント）</option>
+        </select>
+        <small>100セント＝半音。</small>
+      </label>
+      <div class="field">
+        <span>オクターブ</span>
+        <label class="check"><input type="checkbox" id="octaveChk">オクターブ違いも正解にする</label>
+        <small>お手本と違う高さで歌いたいとき（男女の差など）に。</small>
+      </div>
+      <h3>表示と音</h3>
+      <label class="field">
+        <span>音名の書き方</span>
+        <select id="namesSel">
+          <option value="doremi">ド レ ミ</option>
+          <option value="cde">C D E（英語）</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>1日の目標（歌う数）</span>
+        <select id="goalSel">
+          <option value="20">20問</option>
+          <option value="30">30問</option>
+          <option value="50">50問</option>
+          <option value="100">100問</option>
+        </select>
+      </label>
+      <label class="field wide">
+        <span>お手本の音量</span>
+        <input id="volInput" type="range" min="0" max="1" step="0.05">
+      </label>
+      <div class="field wide">
+        <button id="resetBtn" class="ghost" type="button">成績の記録を消す</button>
+      </div>
+    </section>
+  </div>
+</dialog>
+
+<!-- はじめての質問・声の種類 -->
+<dialog id="obDlg" class="sheet-dlg" aria-labelledby="obTitle">
+  <div class="dlg-in">
+    <div class="dlg-head"><h2 id="obTitle">あなたの声は？</h2><button type="button" class="icon" data-close aria-label="閉じる">✕</button></div>
+    <p style="margin:0;font-size:.93rem">出題は、この声域の中から出します。わからなければ、マイクで測るのがおすすめです。あとで設定から変えられます。</p>
+    <div id="voices" class="voices"></div>
+    <div class="controls"><button type="button" class="gold" data-range>🎤 マイクで声域を測る</button></div>
+  </div>
+</dialog>
+
+<!-- 声域を測る -->
+<dialog id="rangeDlg" class="sheet-dlg" aria-labelledby="rgTitle">
+  <div class="dlg-in">
+    <div class="dlg-head"><h2 id="rgTitle">声域を測る</h2><button type="button" class="icon" data-close aria-label="閉じる">✕</button></div>
+    <p id="rgMsg" class="rg-msg"></p>
+    <div id="rgLive" class="rg-live" aria-live="off">—</div>
+    <div class="rg-vals">
+      <div id="rgLowBox">いちばん低い声<b id="rgLow">—</b></div>
+      <div id="rgHighBox">いちばん高い声<b id="rgHigh">—</b></div>
+    </div>
+    <div class="controls">
+      <button id="rgRetry" class="ghost" type="button">やり直す</button>
+      <button id="rgNext" class="gold" type="button">次へ</button>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);margin:12px 0 0">半秒ほど同じ高さを保てた音だけを記録します。無理に出した端の音は避けて、内側（低い側・高い側とも2半音ずつ内側）を練習に使います。</p>
+  </div>
+</dialog>
+
+<!-- 使い方 -->
+<dialog id="helpDlg" class="sheet-dlg" aria-labelledby="helpTitle">
+  <div class="dlg-in help">
+    <div class="dlg-head"><h2 id="helpTitle">使い方とクリア条件</h2><button type="button" class="icon" data-close aria-label="閉じる">✕</button></div>
+    <p>マイクで声の高さを測ります。スタートを押すとマイクの許可を聞かれるので「許可」を選んでください。<b>ヘッドホンかイヤホン</b>を使うと、お手本の音を声と取り違えません（スピーカーのときは、お手本が鳴っているあいだは声を測りません）。</p>
+    <p>声はこの端末の中で解析するだけで、録音も送信もしません。</p>
+    <h3>4つの道</h3>
+    <ul>
+      <li><b>音合わせ</b>：鳴った音と同じ高さで「あー」と歌います。</li>
+      <li><b>音程</b>：基準の音のあとに「長3度 ↑」などと出るので、その高さを歌います。</li>
+      <li><b>五線譜</b>：基準の「ド」を聞いてから、楽譜の音符を聞かずに歌います（視唱）。</li>
+      <li><b>ロングトーン</b>：同じ高さでまっすぐ伸ばす練習と、音階（ドレミ…）をテンポに合わせてなぞる練習。</li>
+    </ul>
+    <h3>判定とクリア条件</h3>
+    <p>目標の高さ（設定の幅、ふつうは±30セント）に入って<b>0.4秒</b>保てたら正解です。10秒たっても合わなければ答えの音が鳴って次へ進みます。</p>
+    <p>音合わせ・音程・五線譜は1ステージ20問。<b>時間内に合わせられた問題が16問以上</b>で、合わせるまでの<b>平均時間が目安以内</b>（音合わせ3秒・音程4秒・五線譜4秒）ならクリアです。★は、合わせられた数と、保っていたあいだのずれの小ささで決まります。「答えの音を聞く」を使った問題は、合わせても数えません。</p>
+    <p>ロングトーンは1ステージ5回。伸ばす練習は、声が途切れず（8割以上）平均のずれが幅の中なら成功。音階は、それぞれの音の後半のずれで判定します。全体の8割以上でクリアです。</p>
+    <p>音程と五線譜では、答えがわからないように、グラフに目標の高さを出しません（答えたあとに出ます）。</p>
+    <h3>音程の名前</h3>
+    <table>
+      <tr><th>名前</th><th>半音の数</th><th>ドレミで言うと</th></tr>
+      <tr><td>短2度</td><td>1</td><td>ミ→ファ</td></tr>
+      <tr><td>長2度</td><td>2</td><td>ド→レ</td></tr>
+      <tr><td>短3度</td><td>3</td><td>レ→ファ</td></tr>
+      <tr><td>長3度</td><td>4</td><td>ド→ミ</td></tr>
+      <tr><td>完全4度</td><td>5</td><td>ド→ファ</td></tr>
+      <tr><td>増4度</td><td>6</td><td>ファ→シ</td></tr>
+      <tr><td>完全5度</td><td>7</td><td>ド→ソ</td></tr>
+      <tr><td>短6度</td><td>8</td><td>ミ→高いド</td></tr>
+      <tr><td>長6度</td><td>9</td><td>ド→ラ</td></tr>
+      <tr><td>短7度</td><td>10</td><td>レ→高いド</td></tr>
+      <tr><td>長7度</td><td>11</td><td>ド→シ</td></tr>
+      <tr><td>オクターブ</td><td>12</td><td>ド→高いド</td></tr>
+    </table>
+    <h3>楽譜の見方</h3>
+    <p><b>ト音記号</b>：記号の渦の中心がある線（下から2本目）が「ソ」。女声の楽譜はこれで書きます。</p>
+    <p><b>ト音記号の下に小さな8</b>：テノールなど男声の楽譜。書いてある音より<b>1オクターブ低く</b>歌います。</p>
+    <p><b>ヘ音記号</b>：2つの点にはさまれた線（上から2本目）が「ファ」。低い男声（バリトン・バス）の楽譜です。</p>
+    <p><b>セント</b>：半音を100に分けた、音の高さのずれの単位です。±30セントなら、半音の3割以内のずれということ。</p>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+const VF = Vex.Flow;
+const $ = (id) => document.getElementById(id);
+
+// ---- 記録 ----
+const STORE_KEY = 'vocalTrainer_v1';
+const defaultStore = () => ({
+  settings: { voice: 'alto', lo: 55, hi: 74, clef: 'auto', tol: 30, octaveFree: false, gate: 0.012, names: 'doremi', goal: 30, vol: 0.7, bpm: 72, onboarded: false },
+  stats: {}, best: {}, daily: { last: '', streak: 0, today: 0 }, total: { n: 0, ok: 0 }, last: { mode: 'match', stage: 0 },
+});
+const loadStore = () => {
+  const base = defaultStore();
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return base;
+    const d = JSON.parse(raw);
+    return {
+      ...base, ...d,
+      settings: { ...base.settings, ...(d.settings || {}) },
+      daily: { ...base.daily, ...(d.daily || {}) },
+      total: { ...base.total, ...(d.total || {}) },
+      last: { ...base.last, ...(d.last || {}) },
+    };
+  } catch (e) {
+    console.warn('記録を読めませんでした。新しく始めます。', e);
+    return base;
+  }
+};
+let store = loadStore();
+const saveStore = () => {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  catch (e) { console.warn('記録を保存できませんでした', e); }
+};
+const S = () => store.settings;
+
+// ---- 音の名前 ----
+const PC_SHARP = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const PC_FLAT = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+const DOREMI = { C: 'ド', D: 'レ', E: 'ミ', F: 'ファ', G: 'ソ', A: 'ラ', B: 'シ' };
+const NAT_PC = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const isNatural = (pc) => [0, 2, 4, 5, 7, 9, 11].includes(((pc % 12) + 12) % 12);
+const pcName = (pc, flat = false) => {
+  const s = (flat ? PC_FLAT : PC_SHARP)[((pc % 12) + 12) % 12];
+  return S().names === 'doremi' ? s.replace(/[A-G]/, (m) => DOREMI[m]) : s;
+};
+const noteLabel = (midi, flat = false) => pcName(midi % 12, flat) + (Math.floor(midi / 12) - 1);
+const range = (a, b) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
+const midiToHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+const hzToMidi = (f) => 69 + 12 * Math.log2(f / 440);
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const median = (a) => { const b = [...a].sort((x, y) => x - y); const n = b.length; return n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2; };
+const randOf = (a) => a[Math.floor(Math.random() * a.length)];
+// VexFlow の音名
+const spell = (writtenMidi, flat) => {
+  const pc = writtenMidi % 12;
+  const oct = Math.floor(writtenMidi / 12) - 1;
+  const find = (p) => Object.keys(NAT_PC).find((k) => NAT_PC[k] === p);
+  if (isNatural(pc)) return { key: `${find(pc)}/${oct}`, acc: '' };
+  return flat ? { key: `${find(pc + 1)}b/${oct}`, acc: 'b' } : { key: `${find(pc - 1)}#/${oct}`, acc: '#' };
+};
+
+// ---- 声域 ----
+const VOICES = {
+  soprano: { name: 'ソプラノ', sub: '高い女声・子ども', lo: 60, hi: 79 },
+  alto: { name: 'アルト', sub: '低めの女声', lo: 55, hi: 74 },
+  tenor: { name: 'テノール', sub: '高めの男声', lo: 48, hi: 67 },
+  baritone: { name: 'バリトン', sub: 'ふつうの男声', lo: 45, hi: 64 },
+  bass: { name: 'バス', sub: '低い男声', lo: 41, hi: 60 },
+};
+const MIN_SPAN = 12;
+const voiceName = () => (VOICES[S().voice]?.name ?? 'マイクで測った声域');
+const rangeText = () => `${noteLabel(S().lo)}〜${noteLabel(S().hi)}`;
+const center = () => Math.round((S().lo + S().hi) / 2);
+const inRange = (list) => list.filter((m) => m >= S().lo && m <= S().hi);
+const naturalsIn = (a, b) => range(a, b).filter((m) => isNatural(m % 12));
+const clefOf = () => {
+  if (S().clef !== 'auto') return S().clef;
+  const m = (S().lo + S().hi) / 2;
+  return m >= 61 ? 'treble' : m >= 56 ? 'treble8vb' : 'bass';
+};
+// 五線譜の基準の「ド」：声域の下のほうで、上にソまで届く C
+const refC = () => {
+  const { lo, hi } = S();
+  let best = null;
+  for (let c = 24; c <= 96; c += 12) {
+    if (c >= lo - 2 && c + 7 <= hi && (best == null || Math.abs(c - (lo + 2)) < Math.abs(best - (lo + 2)))) best = c;
+  }
+  return best ?? Math.round(center() / 12) * 12;
+};
+
+// ---- ステージ ----
+const QUESTIONS = 20;
+const LONG_N = 5;
+const LIMIT = { match: 3000, interval: 4000, staff: 4000 }; // 合わせるまでの目安（ms）
+const TIMEOUT = 10000;
+const HOLD_MS = 400;
+const MATCH_STAGES = [
+  { short: 'まん中の音', desc: '声域のまん中あたりの、出しやすい幹音（♯♭のない音）。', notes: () => naturalsIn(center() - 4, center() + 4) },
+  { short: '低いほう', desc: '声域の下半分の幹音。', notes: () => naturalsIn(S().lo, center()) },
+  { short: '高いほう', desc: '声域の上半分の幹音。', notes: () => naturalsIn(center(), S().hi) },
+  { short: '声域ぜんぶ', desc: '声域の中の、すべての幹音。', notes: () => naturalsIn(S().lo, S().hi) },
+  { short: '♯♭も', desc: '♯♭の付いた音も出ます。半音の差を聞き分けて。', notes: () => range(S().lo, S().hi) },
+  { short: '大きく跳ぶ', desc: '前の音から5半音（完全4度）以上はなれた音へ。', notes: () => range(S().lo, S().hi), leap: 5 },
+  { short: 'ぴったり', desc: '判定を±15セントに。まん中に、まっすぐ当てる。', notes: () => naturalsIn(S().lo, S().hi), tol: 15 },
+];
+const IV_NAME = { 1: '短2度', 2: '長2度', 3: '短3度', 4: '長3度', 5: '完全4度', 6: '増4度', 7: '完全5度', 8: '短6度', 9: '長6度', 10: '短7度', 11: '長7度', 12: 'オクターブ' };
+const IV_HINT = { 1: 'ミ→ファ', 2: 'ド→レ', 3: 'レ→ファ', 4: 'ド→ミ', 5: 'ド→ファ', 6: 'ファ→シ', 7: 'ド→ソ', 8: 'ミ→高いド', 9: 'ド→ラ', 10: 'レ→高いド', 11: 'ド→シ', 12: 'ド→高いド' };
+const ivHint = (n, d) => (d > 0 ? IV_HINT[n] : IV_HINT[n].split('→').reverse().join('→'));
+const INTERVAL_STAGES = [
+  { short: '2度', desc: '半音（短2度）と全音（長2度）。上へ。', ivs: [1, 2], dirs: [1] },
+  { short: '3度', desc: '短3度と長3度。上へ。明るい・暗いの差です。', ivs: [3, 4], dirs: [1] },
+  { short: '4度・5度', desc: '完全4度と完全5度。上へ。', ivs: [5, 7], dirs: [1] },
+  { short: '2〜5度', desc: 'ここまでの音程をまぜて。上へ。', ivs: [1, 2, 3, 4, 5, 7], dirs: [1] },
+  { short: '6度・オクターブ', desc: '短6度・長6度・オクターブ。上へ。', ivs: [8, 9, 12], dirs: [1] },
+  { short: '下へ 2〜3度', desc: '基準の音から下へ。', ivs: [1, 2, 3, 4], dirs: [-1] },
+  { short: '下へ 4〜8度', desc: '完全4度・完全5度・長6度・オクターブを下へ。', ivs: [5, 7, 9, 12], dirs: [-1] },
+  { short: 'ぜんぶ', desc: '増4度や7度も入れて、上へも下へも。', ivs: range(1, 12), dirs: [1, -1] },
+];
+const STAFF_STAGES = [
+  { short: 'ド〜ソ', desc: '基準の「ド」を聞いてから、ド〜ソの音符を歌います。', notes: (r) => naturalsIn(r, r + 7) },
+  { short: '1オクターブ', desc: 'ドから上のドまで。', notes: (r) => naturalsIn(r, r + 12) },
+  { short: 'ドより下', desc: '下のソからドの上のソまで。', notes: (r) => naturalsIn(r - 5, r + 7) },
+  { short: '声域ぜんぶ', desc: '声域の中の、すべての幹音。', notes: () => naturalsIn(S().lo, S().hi) },
+  { short: '♯♭あり', desc: '♯♭の付いた音符も出ます。', notes: (r) => range(r - 5, r + 12) },
+  { short: 'ドは最初だけ', desc: '基準の「ド」は1問目だけ。あとは前の音から自分で高さを探します。', notes: () => naturalsIn(S().lo, S().hi), refOnce: true },
+];
+const LONG_STAGES = [
+  { short: '3秒のばす', desc: 'まん中あたりの音を3秒、まっすぐ伸ばします。', kind: 'tone', sec: 3, zone: 'mid' },
+  { short: '5秒のばす', desc: 'まん中あたりの音を5秒。', kind: 'tone', sec: 5, zone: 'mid' },
+  { short: '低い音で5秒', desc: '声域の低いほうで5秒。息が先になくならないように。', kind: 'tone', sec: 5, zone: 'low' },
+  { short: '高い音で5秒', desc: '声域の高いほうで5秒。のどをしめずに。', kind: 'tone', sec: 5, zone: 'high' },
+  { short: 'ドレミファソ', desc: '音階を上がります。1拍に1音。', kind: 'phrase', deg: [0, 2, 4, 5, 7] },
+  { short: 'ソファミレド', desc: '音階を下がります。下がるときほど低くなりすぎに注意。', kind: 'phrase', deg: [7, 5, 4, 2, 0] },
+  { short: 'ドレミファソファミレド', desc: '上がって、下がる。', kind: 'phrase', deg: [0, 2, 4, 5, 7, 5, 4, 2, 0] },
+  { short: 'ドミソド', desc: '和音の音を1つずつ（アルペジオ）。跳ぶ音程を正確に。', kind: 'phrase', deg: [0, 4, 7, 12, 7, 4, 0] },
+];
+const STAGES = { match: MATCH_STAGES, interval: INTERVAL_STAGES, staff: STAFF_STAGES, long: LONG_STAGES };
+const FREE = -1;
+
+// 出題する項目
+const itemsFor = (mode, stage) => {
+  if (mode === 'interval') return stage.ivs.flatMap((n) => stage.dirs.map((d) => ({ key: `${d > 0 ? '+' : '-'}${n}`, n, d })));
+  const list = inRange(mode === 'staff' ? stage.notes(refC()) : stage.notes());
+  const use = list.length >= 3 ? list : naturalsIn(S().lo, S().hi);
+  return use.map((m) => ({ key: `${m}`, target: m }));
+};
+const freeItems = (mode) => {
+  if (mode === 'interval') return itemsFor(mode, INTERVAL_STAGES[INTERVAL_STAGES.length - 1]);
+  return range(S().lo, S().hi).map((m) => ({ key: `${m}`, target: m }));
+};
+const itemLabel = (mode, key) => {
+  if (mode === 'interval') return `${IV_NAME[Number(key.slice(1))]}${key[0] === '+' ? '↑' : '↓'}`;
+  return noteLabel(Number(key));
+};
+// 苦手なものほど多く出す
+const weightOf = (mode, key) => {
+  const st = store.stats[mode]?.[key];
+  if (!st || st.n === 0) return 2;
+  const miss = 1 - st.ok / st.n;
+  const slow = st.ok ? Math.min(2, st.t / st.ok / LIMIT[mode]) : 2;
+  return 0.4 + 4 * miss + slow;
+};
+const pickWeighted = (mode, items, avoid) => {
+  const pool = items.filter((it) => !avoid(it));
+  const list = pool.length ? pool : items;
+  const ws = list.map((it) => weightOf(mode, it.key));
+  let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i++) { r -= ws[i]; if (r <= 0) return list[i]; }
+  return list[list.length - 1];
+};
+
+// ---- お手本の音 ----
+let actx = null;
+let master = null;
+let voiceWave = null;
+const ensureAudio = () => {
+  if (!actx) {
+    actx = new AudioContext();
+    master = actx.createGain();
+    master.gain.value = S().vol;
+    master.connect(actx.destination);
+    // 「あー」に近い、倍音を少し持った音
+    const imag = new Float32Array([0, 1, 0.5, 0.32, 0.16, 0.1, 0.05, 0.03]);
+    voiceWave = actx.createPeriodicWave(new Float32Array(imag.length), imag);
+  }
+  if (actx.state === 'suspended') actx.resume().catch((e) => console.warn('音を出せません', e));
+  return actx;
+};
+// お手本が鳴っているあいだは声を測らない（スピーカーの音を拾わないため）
+let muteUntil = 0;
+const muteFor = (ctxEnd) => {
+  const end = performance.now() + (ctxEnd - actx.currentTime) * 1000 + 220;
+  muteUntil = Math.max(muteUntil, end);
+  return end;
+};
+const tone = (midi, when, dur, gain = 0.45) => {
+  ensureAudio();
+  const o = actx.createOscillator();
+  o.setPeriodicWave(voiceWave);
+  o.frequency.value = midiToHz(midi);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(gain, when + 0.04);
+  g.gain.setValueAtTime(gain, Math.max(when + 0.05, when + dur - 0.08));
+  g.gain.linearRampToValueAtTime(0, when + dur);
+  o.connect(g).connect(master);
+  o.start(when);
+  o.stop(when + dur + 0.02);
+};
+// 音を順に鳴らし、鳴り終わる時刻（performance.now の ms）を返す
+const playSeq = (midis, dur = 0.9, gap = 0.08) => {
+  ensureAudio();
+  const t0 = actx.currentTime + 0.06;
+  midis.forEach((m, i) => tone(m, t0 + i * (dur + gap), dur));
+  return muteFor(t0 + midis.length * (dur + gap));
+};
+const click = (when, accent) => {
+  ensureAudio();
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = 'square';
+  o.frequency.value = accent ? 1600 : 1100;
+  g.gain.setValueAtTime(accent ? 0.22 : 0.13, when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.04);
+  o.connect(g).connect(master);
+  o.start(when);
+  o.stop(when + 0.05);
+};
+const fanfare = () => {
+  ensureAudio();
+  const t = actx.currentTime + 0.05;
+  [0, 4, 7, 12].forEach((d, i) => tone(60 + d, t + i * 0.12, i === 3 ? 0.5 : 0.14, 0.3));
+  muteFor(t + 0.9);
+};
+
+// ---- 声の高さを測る（YIN 法）----
+const mic = { on: false, stream: null, analyser: null, buf: null, timer: null, trail: [], level: 0, cur: null };
+const ensureAnalyser = () => {
+  ensureAudio();
+  if (!mic.analyser) {
+    mic.analyser = actx.createAnalyser();
+    mic.analyser.fftSize = 2048;
+    mic.buf = new Float32Array(mic.analyser.fftSize);
+  }
+  return mic.analyser;
+};
+const yinD = new Float32Array(2048);
+const detectPitch = (buf, sr) => {
+  let rms = 0;
+  for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / buf.length);
+  mic.level = rms;
+  if (rms < S().gate) return null;
+  const W = 1024;
+  const maxTau = Math.min(Math.floor(sr / 65), buf.length - W - 2);
+  const minTau = Math.max(2, Math.floor(sr / 1100));
+  const d = yinD;
+  d[0] = 1;
+  let sum = 0;
+  for (let tau = 1; tau <= maxTau; tau++) {
+    let s = 0;
+    for (let i = 0; i < W; i++) { const x = buf[i] - buf[i + tau]; s += x * x; }
+    sum += s;
+    d[tau] = sum > 0 ? (s * tau) / sum : 1;
+  }
+  let tau = -1;
+  for (let t = minTau; t <= maxTau; t++) {
+    if (d[t] < 0.15) {
+      while (t + 1 <= maxTau && d[t + 1] < d[t]) t++;
+      tau = t;
+      break;
+    }
+  }
+  if (tau < 0) return null;
+  const a = d[tau - 1];
+  const b = d[tau];
+  const c = tau + 1 <= maxTau ? d[tau + 1] : b;
+  const den = a + c - 2 * b;
+  const shift = den ? (a - c) / (2 * den) : 0;
+  return sr / (tau + shift);
+};
+const TRAIL_MS = 6000;
+const tickPitch = () => {
+  const now = performance.now();
+  mic.analyser.getFloatTimeDomainData(mic.buf);
+  let raw = null;
+  if (now >= muteUntil) {
+    const hz = detectPitch(mic.buf, actx.sampleRate);
+    if (hz && hz > 60 && hz < 1400) raw = hzToMidi(hz);
+  } else mic.level = 0;
+  mic.trail.push({ t: now, raw, m: null });
+  while (mic.trail.length && mic.trail[0].t < now - TRAIL_MS) mic.trail.shift();
+  // 直近の3〜4回の中央値でならす（1回だけの飛びを消す）
+  const recent = mic.trail.slice(-4).filter((x) => x.raw != null && now - x.t < 140).map((x) => x.raw);
+  const m = recent.length >= 2 ? median(recent) : null;
+  mic.trail[mic.trail.length - 1].m = m;
+  mic.cur = m;
+  return { now, m };
+};
+// 半秒ほど同じ高さが続いた音（声域を測るとき）
+const stableNote = (now) => {
+  const xs = mic.trail.filter((x) => x.t >= now - 450);
+  if (xs.length < 10 || xs.some((x) => x.m == null)) return null;
+  const med = median(xs.map((x) => x.m));
+  return xs.every((x) => Math.abs(x.m - med) <= 0.5) ? Math.round(med) : null;
+};
+const centsOff = (m, target) => {
+  let c = (m - target) * 100;
+  if (S().octaveFree) c = ((((c + 600) % 1200) + 1200) % 1200) - 600;
+  return c;
+};
+const loopTick = () => {
+  if (!mic.on) return;
+  const { now, m } = tickPitch();
+  if (run) runTick(now, m);
+  if (rg.active) rangeTick(now, m);
+  if (view === 'play') { updateReadout(m); drawTrail(now); }
+  if ($('settingsDlg').open) updateMonitor(m);
+};
+const startLoop = () => { if (!mic.timer) mic.timer = setInterval(loopTick, 30); };
+const setMicStatus = (cls, text, help = '') => {
+  const el = $('micStatus');
+  el.className = `mic-status ${cls}`;
+  el.textContent = cls === 'on' ? 'マイク オン' : cls === 'off' ? 'マイク ✕' : 'マイク オフ';
+  el.title = help ? `${text}：${help}` : text;
+  const d = $('micDetail');
+  d.innerHTML = '<b></b><p></p>';
+  d.querySelector('b').textContent = text;
+  d.querySelector('p').textContent = help;
+  d.querySelector('p').hidden = !help;
+  $('micOnBtn').hidden = cls === 'on';
+};
+const startMic = async () => {
+  if (mic.on) return true;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setMicStatus('off', 'マイクを使えません', 'このブラウザ（または http のページ）ではマイクを使えません。Chrome・Edge・Safari で https のページを開いてください。');
+    return false;
+  }
+  ensureAnalyser();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    mic.stream = stream;
+    actx.createMediaStreamSource(stream).connect(mic.analyser);
+    mic.on = true;
+    const label = stream.getAudioTracks()[0]?.label;
+    setMicStatus('on', 'マイク オン', label ? `使っているマイク：${label}` : '');
+    startLoop();
+    return true;
+  } catch (e) {
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
+      setMicStatus('off', 'マイクが許可されていません', 'アドレスバー左のアイコン →「サイトの設定」→「マイク」を「許可」にして、再読み込みしてください。');
+    } else if (e.name === 'NotFoundError' || e.name === 'OverconstrainedError') {
+      setMicStatus('off', 'マイクが見つかりません', 'マイク（またはマイク付きイヤホン）をつないでから、もう一度押してください。');
+    } else {
+      setMicStatus('off', 'マイクを使えません', String(e.message || e));
+      console.error('マイクの準備に失敗しました', e);
+    }
+    return false;
+  }
+};
+
+// ---- 声の高さの表示 ----
+const updateReadout = (m) => {
+  const tg = currentTarget();
+  const read = $('read');
+  const needle = $('needle');
+  if (m == null) {
+    $('readNote').textContent = '—';
+    $('readCents').textContent = mic.on ? '声を待っています' : 'マイク オフ';
+    needle.classList.add('hide');
+    read.classList.remove('in');
+    return;
+  }
+  const near = Math.round(m);
+  const c = tg != null ? centsOff(m, tg) : (m - near) * 100;
+  $('readNote').textContent = noteLabel(near);
+  $('readCents').textContent = `${c >= 0 ? '+' : '−'}${Math.abs(Math.round(c))}セント${tg != null ? '（目標から）' : ''}`;
+  needle.classList.remove('hide');
+  needle.style.left = `${50 + Math.max(-50, Math.min(50, c / 2))}%`;
+  read.classList.toggle('in', tg != null && Math.abs(c) <= runTol());
+};
+const runTol = () => (run?.tol ?? S().tol);
+// 目標の高さ（グラフに出すもの）。音程と五線譜は答えるまで出さない
+const currentTarget = () => {
+  if (!run) return null;
+  if (run.kind === 'flash') {
+    const q = run.q;
+    if (!q) return null;
+    return (run.mode === 'match' || q.revealed) ? q.target : null;
+  }
+  const q = run.q;
+  if (!q) return null;
+  if (q.kind === 'tone') return q.target;
+  const now = performance.now();
+  const i = q.noteTimes ? q.noteTimes.findIndex((t) => now < t + q.beatMs) : -1;
+  return i >= 0 ? q.notes[i] : null;
+};
+const trailTargets = (now) => {
+  if (!run || !run.q) return [];
+  const q = run.q;
+  if (run.kind === 'long' && q.kind === 'phrase' && q.noteTimes) {
+    return q.notes.map((m, i) => ({ t0: q.noteTimes[i], t1: q.noteTimes[i] + q.beatMs, m }));
+  }
+  const tg = currentTarget();
+  return tg == null ? [] : [{ t0: now - TRAIL_MS, t1: now + 3000, m: tg }];
+};
+const drawTrail = (now) => {
+  const cv = $('trail');
+  const w = cv.clientWidth;
+  const h = cv.clientHeight;
+  if (!w || !h) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const tgs = trailTargets(now);
+  let bot;
+  let top;
+  if (tgs.length) {
+    const ms = tgs.map((x) => x.m);
+    bot = Math.min(...ms) - 6;
+    top = Math.max(...ms) + 6;
+  } else { bot = S().lo - 2; top = S().hi + 2; }
+  const yOf = (m) => h - ((m - bot) / (top - bot)) * h;
+  const SPAN = 4000;
+  const xNow = w * 0.8;
+  const xOf = (t) => xNow - ((now - t) / SPAN) * xNow;
+  // 半音ごとの線と、幹音の名前
+  g.font = '11px "Zen Maru Gothic", sans-serif';
+  g.textBaseline = 'middle';
+  for (let k = Math.ceil(bot); k <= Math.floor(top); k++) {
+    const y = yOf(k);
+    const nat = isNatural(k % 12);
+    g.strokeStyle = nat ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.04)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+    if (nat && (top - bot) <= 30) { g.fillStyle = 'rgba(255,220,236,.45)'; g.fillText(noteLabel(k), 4, y); }
+  }
+  // 目標
+  const tol = runTol() / 100;
+  tgs.forEach((x) => {
+    const x0 = Math.max(0, xOf(x.t0));
+    const x1 = Math.min(w, xOf(x.t1));
+    if (x1 <= x0) return;
+    g.fillStyle = 'rgba(255,122,184,.22)';
+    g.fillRect(x0, yOf(x.m + tol), x1 - x0, yOf(x.m - tol) - yOf(x.m + tol));
+    g.strokeStyle = 'rgba(255,122,184,.9)';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x0, yOf(x.m)); g.lineTo(x1, yOf(x.m)); g.stroke();
+  });
+  // いまの位置
+  g.strokeStyle = 'rgba(255,255,255,.25)';
+  g.lineWidth = 1;
+  g.beginPath(); g.moveTo(xNow, 0); g.lineTo(xNow, h); g.stroke();
+  // 声の線（目標に入っているところは緑）
+  const tgAt = (t) => tgs.find((x) => t >= x.t0 && t < x.t1);
+  g.lineWidth = 3;
+  g.lineCap = 'round';
+  let prev = null;
+  mic.trail.forEach((p) => {
+    if (p.m == null || p.t < now - SPAN) { prev = null; return; }
+    if (prev) {
+      const tg = tgAt(p.t);
+      const inBand = tg && Math.abs(centsOff(p.m, tg.m)) <= runTol();
+      g.strokeStyle = inBand ? '#4ade80' : '#ffd0e6';
+      g.beginPath(); g.moveTo(xOf(prev.t), yOf(prev.m)); g.lineTo(xOf(p.t), yOf(p.m)); g.stroke();
+    }
+    prev = p;
+  });
+  if (mic.cur != null) {
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(xNow, yOf(mic.cur), 5, 0, Math.PI * 2); g.fill();
+  }
+  if (!mic.on) {
+    g.fillStyle = 'rgba(255,220,236,.6)';
+    g.font = '14px "Zen Maru Gothic", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('スタートを押すとマイクがオンになります', w / 2, h / 2);
+    g.textAlign = 'start';
+  }
+};
+const updateMonitor = (m) => {
+  const max = 0.08;
+  $('levelBar').style.width = `${Math.min(100, (mic.level / max) * 100)}%`;
+  $('gateMark').style.left = `${Math.min(100, (S().gate / max) * 100)}%`;
+  $('micMonitor').textContent = m == null
+    ? (mic.level >= S().gate ? '音はありますが、高さがはっきりしません' : '静か（または黒い線より小さい音）')
+    : `${noteLabel(Math.round(m))}　${midiToHz(m).toFixed(1)}Hz`;
+};
+
+// ---- 楽譜 ----
+const vfClef = () => (clefOf() === 'bass' ? 'bass' : 'treble');
+const writtenOf = (m) => m + (clefOf() === 'treble8vb' ? 12 : 0);
+// notes: [{ midi, flat, gray, label }]
+const renderNotes = (notes, { dur = 'w', status = [], cur = -1 } = {}) => {
+  const el = $('score');
+  el.innerHTML = '';
+  if (!notes.length) return;
+  const w = dur === 'w' ? 300 : Math.max(360, Math.min(720, 130 + notes.length * 62));
+  const H = 180;
+  const r = new VF.Renderer(el, VF.Renderer.Backends.SVG);
+  r.resize(w, H);
+  const ctx = r.getContext();
+  const stave = new VF.Stave(10, 28, w - 20);
+  if (clefOf() === 'treble8vb') stave.addClef('treble', 'default', '8vb');
+  else stave.addClef(vfClef());
+  stave.setContext(ctx).draw();
+  const vn = notes.map((n) => {
+    const sp = spell(writtenOf(n.midi), n.flat);
+    const sn = new VF.StaveNote({ keys: [sp.key], duration: dur, clef: vfClef(), auto_stem: true });
+    if (sp.acc) sn.addModifier(new VF.Accidental(sp.acc), 0);
+    if (n.label) sn.addModifier(new VF.Annotation(n.label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
+    if (n.gray) sn.setStyle({ fillStyle: '#a8959f', strokeStyle: '#a8959f' });
+    if (n.ok) sn.setStyle({ fillStyle: '#15803d', strokeStyle: '#15803d' });
+    return sn;
+  });
+  const voice = new VF.Voice({ num_beats: notes.length * (dur === 'w' ? 4 : 1), beat_value: 4 });
+  voice.addTickables(vn);
+  vn.forEach((n) => n.setStave(stave));
+  new VF.Formatter().joinVoices([voice]).format([voice], w - (dur === 'w' ? 110 : 100));
+  const top = stave.getYForLine(0) - 14;
+  const hgt = stave.getYForLine(4) - stave.getYForLine(0) + 28;
+  const COLORS = { ok: 'rgba(46,139,87,.22)', miss: 'rgba(200,67,58,.22)' };
+  vn.forEach((n, i) => {
+    const fill = i === cur ? 'rgba(194,54,122,.24)' : COLORS[status[i]];
+    if (!fill) return;
+    ctx.save();
+    ctx.setFillStyle(fill);
+    ctx.fillRect(n.getAbsoluteX() - 8, top, n.getWidth() + 16, hgt);
+    ctx.restore();
+  });
+  voice.draw(ctx, stave);
+  const svg = el.querySelector('svg');
+  if (svg) { svg.setAttribute('viewBox', `0 0 ${w} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = `${w}px`; }
+};
+
+// ---- 状態 ----
+let mode = 'match';
+let stageIdx = 0;
+let run = null;
+let timers = [];
+const later = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
+const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+const stageOf = () => (stageIdx === FREE ? null : STAGES[mode][stageIdx]);
+const bestKey = (m, i) => `${m}:${i}`;
+const bestStars = (m, i) => store.best[bestKey(m, i)]?.stars || 0;
+const starText = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
+const dayStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => dayStr(new Date());
+const tickDaily = (ok) => {
+  const t = today();
+  const dl = store.daily;
+  if (dl.last !== t) {
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    dl.streak = dl.last === dayStr(y) ? dl.streak + 1 : 1;
+    dl.last = t;
+    dl.today = 0;
+  }
+  dl.today++;
+  store.total.n++;
+  if (ok) store.total.ok++;
+};
+const recordItem = (m, key, ok, ms) => {
+  store.stats[m] ??= {};
+  const st = (store.stats[m][key] ??= { n: 0, ok: 0, t: 0 });
+  st.n++;
+  if (ok) { st.ok++; st.t += ms; }
+  tickDaily(ok);
+  saveStore();
+};
+
+// ---- 画面 ----
+const setFeedback = (text, cls = '') => { const el = $('feedback'); if (el.textContent !== text) el.textContent = text; el.className = `feedback ${cls}`; };
+const setCue = (text, cls = '') => { const el = $('cue'); el.textContent = text; el.className = `cue ${cls}`; };
+const MODE_INFO = {
+  match: { name: '音合わせ', lane: '音合わせの道', desc: '鳴った音と同じ高さで歌う', icon: '🎯', bg: '#fbe5ef' },
+  interval: { name: '音程', lane: '音程の道', desc: '基準の音から「○度上」を歌う', icon: '🪜', bg: '#fff1d6' },
+  staff: { name: '五線譜', lane: '五線譜の道', desc: '音符を見て、聞かずに歌う（視唱）', icon: '🎼', bg: '#ece9fe' },
+  long: { name: 'ロングトーン', lane: 'ロングトーンの道', desc: '同じ高さでまっすぐ伸ばす・音階をなぞる', icon: '🌬️', bg: '#e1f3ee' },
+};
+const MODES = Object.keys(MODE_INFO);
+const needsBpm = () => mode === 'long' && (stageIdx === FREE || stageOf().kind === 'phrase');
+const applyModeVisibility = () => {
+  document.body.dataset.mode = mode;
+  $('bpmRow').classList.toggle('mode-off', !needsBpm());
+  $('demoBtn').classList.toggle('mode-off', !needsBpm());
+  const notes = {
+    match: 'お手本の音が鳴ったら、同じ高さで「あー」と歌います。グラフの帯に入って0.4秒保てたら正解。',
+    interval: '基準の音が鳴ったら、指定の音程だけ上（↓なら下）の音を歌います。',
+    staff: '基準の「ド」を聞いてから、楽譜の音符を歌います。わからないときは「答えの音を聞く」。',
+    long: '目標の音が鳴ったら、同じ高さでまっすぐ伸ばします。音階は、4つのカウントのあと1拍に1音。',
+  };
+  $('inputNote').textContent = `${notes[mode]} ヘッドホンがおすすめです。`;
+};
+// ---- ホーム ----
+const starsOf = (m) => STAGES[m].reduce((a, _, i) => a + bestStars(m, i), 0);
+const nextStageOf = (m) => STAGES[m].findIndex((_, i) => bestStars(m, i) === 0);
+const laneHead = (m, extra = '') => {
+  const mi = MODE_INFO[m];
+  return `<div class="lane-head"><span class="ic" style="background:${mi.bg}">${mi.icon}</span><div><h3>${mi.lane}</h3><p>${mi.desc}</p></div>${extra}</div>`;
+};
+const ringSvg = (frac) => {
+  const r = 40;
+  const c = 2 * Math.PI * r;
+  return `<svg viewBox="0 0 92 92"><circle class="track" cx="46" cy="46" r="${r}" fill="none" stroke-width="9"/><circle class="fill" cx="46" cy="46" r="${r}" fill="none" stroke-width="9" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(1, frac))}"/></svg>`;
+};
+const renderHome = () => {
+  const lm = MODES.includes(store.last.mode) ? store.last.mode : 'match';
+  const nx = nextStageOf(lm);
+  const li = store.last.stage >= 0 && store.last.stage < STAGES[lm].length && bestStars(lm, store.last.stage) === 0
+    ? store.last.stage : (nx >= 0 ? nx : STAGES[lm].length - 1);
+  const st = STAGES[lm][li];
+  const fresh = !store.total.n;
+  $('continueCard').innerHTML = `<span class="kicker">${fresh ? 'まずはここから' : '続きから'}・${MODE_INFO[lm].lane}</span>`
+    + `<h2>ステージ${li + 1}　${st.short}</h2><p>${st.desc}</p>`
+    + `<span class="stars-line" aria-label="★${bestStars(lm, li)}">${starText(bestStars(lm, li))}</span>`
+    + `<button type="button" class="big" data-play="${lm}:${li}">▶ ${fresh ? 'はじめる' : '続ける'}</button>`;
+  const todayN = store.daily.last === today() ? store.daily.today : 0;
+  const goal = S().goal;
+  $('goalRing').className = `ring${todayN >= goal ? ' met' : ''}`;
+  $('goalRing').innerHTML = `${ringSvg(todayN / goal)}<div><b>${todayN}</b><small>/ ${goal}問</small></div>`;
+  $('goalText').textContent = todayN >= goal ? '達成！ この調子で明日も。' : `あと ${goal - todayN} 問。歌った数で数えます。`;
+  const streak = store.daily.last === today() ? store.daily.streak : 0;
+  $('miniStreak').textContent = streak;
+  $('miniStars').textContent = MODES.reduce((a, m) => a + starsOf(m), 0);
+  const all = MODES.reduce((a, m) => a + STAGES[m].length, 0);
+  $('miniClear').textContent = `${MODES.reduce((a, m) => a + STAGES[m].filter((_, i) => bestStars(m, i) > 0).length, 0)}/${all}`;
+  $('voiceText').textContent = `${rangeText()}（${voiceName()}）`;
+  $('helloTitle').textContent = todayN >= goal ? '今日の目標、達成です' : streak >= 2 ? `${streak}日つづいています` : '今日も、声をまっすぐ';
+  $('paths').innerHTML = MODES.map((m) => {
+    const n = nextStageOf(m);
+    const nodes = STAGES[m].map((s, i) => {
+      const stars = bestStars(m, i);
+      const cls = stars ? 'done' : i === n ? 'next' : 'later';
+      return `<button type="button" class="node ${cls}" data-play="${m}:${i}" aria-label="${MODE_INFO[m].name} ステージ${i + 1} ${s.short}（★${stars}）">`
+        + `<span class="dot">${stars ? '✓' : i + 1}</span>`
+        + `<span><span class="nm">${s.short}</span><span class="st${stars ? '' : ' none'}">${starText(stars)}</span><span class="sub">${s.desc}</span></span></button>`;
+    }).join('');
+    return `<div class="card lane">${laneHead(m, `<span class="cnt">★ ${starsOf(m)}/${STAGES[m].length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
+  }).join('');
+  $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
+    + '<button type="button" class="tile" data-range><span class="ic" style="background:#fbe5ef">🎤</span><span><b>声域を測る</b><small>いちばん低い声と高い声を歌って、練習の音域を決める</small></span></button>'
+    + '<button type="button" class="tile" data-open="helpDlg"><span class="ic" style="background:#e8eef6">📖</span><span><b>音程と楽譜の見方</b><small>音程の名前・ト音記号とヘ音記号・セント</small></span></button>';
+};
+const renderStageInfo = () => {
+  const st = stageOf();
+  if (!st) {
+    $('stageInfo').innerHTML = `<b>自由練習・${MODE_INFO[mode].name}</b>${mode === 'long'
+      ? 'のばす練習と音階をまぜて5回。'
+      : '声域の中から、合わせにくい音・音程を多めに出します。終わりはありません。'}<br><span class="rule">声域 ${rangeText()}</span>`;
+    return;
+  }
+  const rule = mode === 'long'
+    ? `クリア：${LONG_N}回で8割以上できる`
+    : `クリア：${QUESTIONS}問中16問以上を時間内に・平均${LIMIT[mode] / 1000}秒以内`;
+  $('stageInfo').innerHTML = `<b>ステージ${stageIdx + 1}　${st.short}</b>${st.desc}<br><span class="rule">${rule}</span><br><span class="rule">声域 ${rangeText()}</span>`;
+};
+const setProg = (frac) => { $('playProg').style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`; };
+const renderPlayHead = () => {
+  const st = stageOf();
+  $('playTitle').textContent = `${MODE_INFO[mode].lane}　${st ? `ステージ${stageIdx + 1}・${st.short}` : '自由練習'}`;
+};
+const popJudge = (text, cls, sub = '') => {
+  const layer = $('judgeLayer');
+  layer.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = `judge ${cls}`;
+  d.innerHTML = `<b></b>${sub ? '<span></span>' : ''}`;
+  d.querySelector('b').textContent = text;
+  if (sub) d.querySelector('span').textContent = sub;
+  layer.appendChild(d);
+};
+const showSheet = (on) => { $('sheetBox').hidden = !on; };
+const renderIdle = () => {
+  $('prompt').innerHTML = '';
+  $('count').textContent = '';
+  $('combo').textContent = '';
+  setCue('');
+  setProg(0);
+  renderPlayHead();
+  setFeedback('');
+  const st = stageOf();
+  if (mode === 'staff') {
+    showSheet(true);
+    const r = refC();
+    const first = itemsFor('staff', st || STAFF_STAGES[0])[0]?.target ?? r + 4;
+    renderNotes([{ midi: r, gray: true, label: pcName(0) }, { midi: first }]);
+  } else if (mode === 'long' && st?.kind === 'phrase') {
+    showSheet(true);
+    const t = phraseTonic(st.deg, null);
+    renderNotes(st.deg.map((d) => ({ midi: t + d, flat: [5, 10].includes(t % 12) })), { dur: 'q' });
+  } else showSheet(false);
+  drawTrail(performance.now());
+  updateReadout(null);
+};
+const renderStats = () => {
+  const total = store.total;
+  const cleared = MODES.reduce((a, m) => a + STAGES[m].filter((_, i) => bestStars(m, i) > 0).length, 0);
+  const all = MODES.reduce((a, m) => a + STAGES[m].length, 0);
+  const streak = store.daily.last === today() ? store.daily.streak : 0;
+  $('stats').innerHTML = [
+    [store.daily.last === today() ? store.daily.today : 0, '今日歌った数'],
+    [`${streak}日`, '続けた日数'],
+    [total.n ? `${Math.round((total.ok / total.n) * 100)}%` : '—', '合わせられた割合'],
+    [`${cleared}/${all}`, 'クリアしたステージ'],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  $('modeRecs').innerHTML = MODES.map((m) => {
+    const max = STAGES[m].length * 3;
+    const got = starsOf(m);
+    const clr = STAGES[m].filter((_, i) => bestStars(m, i) > 0).length;
+    const st = store.stats[m] || {};
+    const weak = Object.entries(st)
+      .filter(([, v]) => v.n >= 2 && v.ok < v.n)
+      .sort((a, b) => (a[1].ok / a[1].n) - (b[1].ok / b[1].n))
+      .slice(0, 4);
+    const tried = Object.keys(st).length;
+    const weakHtml = m === 'long' ? '<span>ステージごとの★で記録します。</span>'
+      : weak.length ? `苦手：${weak.map(([k, v]) => `<strong>${itemLabel(m, k)}</strong>（${Math.round((v.ok / v.n) * 100)}%）`).join('、')}`
+        : tried ? '<span class="none">いまのところ苦手はありません</span>' : 'まだ記録がありません';
+    return `<div class="card mode-rec">${laneHead(m)}<div class="meta"><span>★ ${got} / ${max}</span><span>クリア ${clr} / ${STAGES[m].length}</span></div>`
+      + `<div class="bar"><i style="width:${(got / max) * 100}%"></i></div><div class="weak">${weakHtml}</div></div>`;
+  }).join('');
+};
+const setRunningUI = (running) => {
+  $('intro').hidden = running;
+  $('stopBtn').hidden = !running;
+  $('hintBtn').hidden = !running || mode === 'long';
+  $('hintBtn').textContent = mode === 'match' ? '♪ もう一度聞く' : '♪ 答えの音を聞く';
+  $('demoBtn').hidden = running;
+  $('result').hidden = true;
+};
+
+// ---- 1問ずつのモード（音合わせ・音程・五線譜）----
+const startFlash = () => {
+  const st = stageOf();
+  const items = stageIdx === FREE ? freeItems(mode) : itemsFor(mode, st);
+  run = { kind: 'flash', mode, stage: stageIdx, items, results: [], combo: 0, maxCombo: 0, q: null, prevKey: null, prev: null, locked: false, tol: st?.tol ?? S().tol, leap: st?.leap ?? 0, refOnce: !!st?.refOnce, ref: refC() };
+  setRunningUI(true);
+  nextQuestion();
+};
+const nextQuestion = () => {
+  if (!run) return;
+  const { lo, hi } = S();
+  let it;
+  let base = null;
+  let target;
+  for (let tries = 0; tries < 30; tries++) {
+    it = pickWeighted(mode, run.items, (x) => x.key === run.prevKey
+      || (x.target != null && run.prev != null && (x.target === run.prev || (run.leap && Math.abs(x.target - run.prev) < run.leap))));
+    if (mode !== 'interval') { target = it.target; break; }
+    const bases = range(lo, hi).filter((b) => b + it.d * it.n >= lo && b + it.d * it.n <= hi && b !== run.prev);
+    if (bases.length) { base = randOf(bases); target = base + it.d * it.n; break; }
+  }
+  if (target == null) { stopRun(); setFeedback('声域がせまくて出題できません。設定で音域を広げてください。', 'ng'); return; }
+  const flat = !isNatural(target % 12) && Math.random() < 0.5;
+  const q = { ...it, target, base, flat, missed: false, revealed: false, t0: 0, phase: 'listen', holdStart: 0, lastIn: 0, hold: [] };
+  run.q = q;
+  run.prevKey = it.key;
+  run.prev = target;
+  run.locked = false;
+  setFeedback('');
+  const n = run.results.length + 1;
+  $('count').innerHTML = stageIdx === FREE ? `${n}<small> 問目</small>` : `${n}<small> / ${QUESTIONS}</small>`;
+  setProg(stageIdx === FREE ? 0 : run.results.length / QUESTIONS);
+  $('combo').textContent = run.combo >= 3 ? `${run.combo} コンボ！` : '';
+  let seq = [];
+  if (mode === 'match') {
+    $('prompt').innerHTML = `<span class="big">${noteLabel(target, flat)}</span><small>この音と同じ高さで</small>`;
+    seq = [target];
+  } else if (mode === 'interval') {
+    $('prompt').innerHTML = `<span class="big">${IV_NAME[it.n]} ${it.d > 0 ? '↑' : '↓'}</span><small>基準の音（${noteLabel(base)}）から${it.d > 0 ? '上' : '下'}へ　ドレミなら ${ivHint(it.n, it.d)}</small>`;
+    seq = [base];
+  } else {
+    const giveRef = !run.refOnce || run.results.length === 0;
+    $('prompt').innerHTML = `<small>${giveRef ? '基準の「ド」を聞いてから、' : ''}この音符を歌ってください</small>`;
+    renderStaffQ(q, giveRef);
+    if (giveRef) seq = [run.ref];
+  }
+  if (seq.length) {
+    setCue('♪ 聞いてください', 'listen');
+    const end = playSeq(seq, 0.9);
+    later(() => beginSing(q), Math.max(0, end - performance.now()));
+  } else beginSing(q);
+};
+const renderStaffQ = (q, giveRef, done = false) => {
+  showSheet(true);
+  const notes = [];
+  if (giveRef) notes.push({ midi: run.ref, gray: true, label: pcName(0) });
+  notes.push({ midi: q.target, flat: q.flat, label: done ? pcName(q.target % 12, q.flat) : '', ok: done });
+  renderNotes(notes);
+};
+const beginSing = (q) => {
+  if (!run || run.q !== q) return;
+  q.phase = 'sing';
+  q.t0 = performance.now() - (q.elapsed || 0);
+  setCue('🎤 うたってください', 'sing');
+};
+const flashTick = (now, m) => {
+  const q = run.q;
+  if (!q || q.phase !== 'sing' || run.locked) return;
+  if (now - q.t0 > TIMEOUT) { timeoutQuestion(); return; }
+  if (m == null) {
+    if (q.holdStart && now - q.lastIn > 150) q.holdStart = 0;
+    return;
+  }
+  const c = centsOff(m, q.target);
+  if (Math.abs(c) <= run.tol) {
+    if (!q.holdStart) { q.holdStart = now; q.hold = []; }
+    q.lastIn = now;
+    q.hold.push(Math.abs(c));
+    if (now - q.holdStart >= HOLD_MS) flashCorrect();
+    else setFeedback('そのまま…', 'good');
+    return;
+  }
+  if (q.holdStart && now - q.lastIn > 150) q.holdStart = 0;
+  if (mode === 'match' || q.revealed) setFeedback(Math.abs(c) < 300 ? (c < 0 ? '↑ もう少し高く' : '↓ もう少し低く') : (c < 0 ? '↑ もっと高く' : '↓ もっと低く'), 'ng');
+  else setFeedback('');
+};
+const flashCorrect = () => {
+  const q = run.q;
+  const ms = Math.max(0, q.holdStart - q.t0);
+  const ok = !q.missed;
+  const avgC = mean(q.hold);
+  run.locked = true;
+  q.phase = 'done';
+  q.revealed = true;
+  recordItem(mode, q.key, ok, ms);
+  run.results.push({ ok, t: ms, c: ok ? avgC : null });
+  if (ok) { run.combo++; run.maxCombo = Math.max(run.maxCombo, run.combo); } else run.combo = 0;
+  const sec = (ms / 1000).toFixed(1);
+  const great = ok && avgC <= run.tol / 3;
+  setFeedback(ok ? `◎ 合いました！ ${sec}秒・ずれ ${Math.round(avgC)}セント` : `○ 合いました（答えを聞いたあと） ${sec}秒`, ok ? 'ok' : 'good');
+  popJudge(great ? 'Perfect!' : ok ? 'OK' : '○', great ? 'perfect' : 'good', `${Math.round(avgC)}セント`);
+  setCue('');
+  if (mode === 'staff') renderStaffQ(q, !run.refOnce || run.results.length === 1, true);
+  if (mode === 'interval') $('prompt').querySelector('small').textContent = `答え：${noteLabel(q.target, q.flat)}`;
+  if (run.stage !== FREE) setProg(run.results.length / QUESTIONS);
+  $('combo').textContent = run.combo >= 3 ? `${run.combo} コンボ！` : '';
+  later(() => (shouldFinish() ? finishFlash() : nextQuestion()), 900);
+};
+const timeoutQuestion = () => {
+  const q = run.q;
+  run.locked = true;
+  q.phase = 'done';
+  q.revealed = true;
+  run.combo = 0;
+  recordItem(mode, q.key, false, 0);
+  run.results.push({ ok: false, t: LIMIT[mode] * 2, c: null });
+  popJudge('時間切れ', 'miss');
+  setFeedback(`答えは ${noteLabel(q.target, q.flat)}（いま鳴らします）`, 'good');
+  setCue('♪ 答えの音', 'listen');
+  if (mode === 'staff') renderStaffQ(q, !run.refOnce || run.results.length === 1, true);
+  if (run.stage !== FREE) setProg(run.results.length / QUESTIONS);
+  $('combo').textContent = '';
+  const end = playSeq([q.target], 1.2);
+  later(() => (shouldFinish() ? finishFlash() : nextQuestion()), Math.max(0, end - performance.now()) + 500);
+};
+// もう一度聞く（音合わせは減点なし）・答えの音を聞く（音程・五線譜は合わせても数えない）
+const hearAgain = () => {
+  if (!run || run.kind !== 'flash' || run.locked || !run.q) return;
+  const q = run.q;
+  if (q.phase === 'sing') q.elapsed = performance.now() - q.t0;
+  q.phase = 'listen';
+  q.holdStart = 0;
+  if (mode !== 'match') { q.missed = true; q.revealed = true; run.combo = 0; $('combo').textContent = ''; }
+  setCue('♪ 聞いてください', 'listen');
+  const seq = mode === 'interval' && !q.revealed ? [q.base] : mode === 'interval' ? [q.base, q.target] : [q.target];
+  const end = playSeq(seq, 0.9);
+  later(() => beginSing(q), Math.max(0, end - performance.now()));
+};
+const shouldFinish = () => run && run.stage !== FREE && run.results.length >= QUESTIONS;
+const finishFlash = () => {
+  const r = run;
+  stopRun(false);
+  const n = r.results.length;
+  if (!n) return;
+  const okN = r.results.filter((x) => x.ok).length;
+  const avg = mean(r.results.map((x) => x.t));
+  const cs = r.results.filter((x) => x.c != null).map((x) => x.c);
+  const avgC = mean(cs);
+  const limit = LIMIT[r.mode];
+  const rate = okN / n;
+  if (r.stage === FREE) {
+    showResult(null, `${n}問・時間内に合わせた ${okN}問（${Math.round(rate * 100)}%）`, `平均 ${(avg / 1000).toFixed(1)}秒・平均のずれ ${Math.round(avgC)}セント・最大 ${r.maxCombo} コンボ`);
+    return;
+  }
+  const clear = okN >= 16 && avg <= limit;
+  const stars = !clear ? 0 : (okN >= 19 && avgC <= r.tol / 3) ? 3 : (okN >= 18 && avgC <= r.tol / 2) ? 2 : 1;
+  const isBest = saveBest(bestKey(r.mode, r.stage), { stars, rate, avg, cents: avgC });
+  showResult(stars, `合わせた ${okN} / ${n}問・平均 ${(avg / 1000).toFixed(1)}秒・ずれ ${Math.round(avgC)}セント`,
+    clear ? `最大 ${r.maxCombo} コンボ${stars < 3 ? `　★3は19問以上・平均のずれ${Math.round(r.tol / 3)}セント以内` : ''}`
+      : `クリアには 16問以上・平均${limit / 1000}秒以内`, isBest);
+};
+const saveBest = (key, rec) => {
+  const old = store.best[key];
+  const better = !old || rec.stars > old.stars || (rec.stars === old.stars && rec.rate > old.rate);
+  if (better) store.best[key] = rec;
+  saveStore();
+  return better && rec.stars > 0;
+};
+const showResult = (stars, line1, line2, isBest = false) => {
+  const el = $('result');
+  el.hidden = false;
+  $('intro').hidden = true;
+  $('judgeLayer').innerHTML = '';
+  $('prompt').innerHTML = '';
+  setCue('');
+  setFeedback('');
+  setProg(1);
+  if (stars == null) {
+    el.className = 'result';
+    el.innerHTML = '<h2>おつかれさま</h2>';
+  } else {
+    el.className = `result ${stars ? 'clear' : 'fail'}`;
+    const starSpans = [0, 1, 2].map((i) => `<span class="${i < stars ? 'on' : ''}" style="--d:${0.15 + i * 0.25}s">★</span>`).join('');
+    el.innerHTML = `<p class="stars" aria-label="★${stars}">${starSpans}</p><h2>${stars ? 'クリア！' : 'もう少し！'}</h2>`;
+    if (isBest) el.insertAdjacentHTML('beforeend', '<em class="best">自己ベスト</em>');
+    if (stars) fanfare();
+  }
+  const p1 = document.createElement('p'); p1.textContent = line1;
+  const p2 = document.createElement('p'); p2.className = 'sub'; p2.textContent = line2;
+  el.append(p1, p2);
+  const row = document.createElement('div');
+  row.className = 'controls';
+  const mk = (text, cls, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = cls; b.textContent = text;
+    b.addEventListener('click', fn);
+    row.appendChild(b);
+  };
+  mk('ホームへ', 'ghost', () => goView('home'));
+  mk('↺ もう一度', stars ? 'ghost' : '', startRun);
+  if (stars && stageIdx !== FREE && stageIdx < STAGES[mode].length - 1) {
+    mk('次のステージへ →', 'gold', () => { selectStage(stageIdx + 1); startRun(); });
+  }
+  el.appendChild(row);
+};
+
+// ---- ロングトーン（のばす・音階）----
+const zoneNotes = (zone) => {
+  const { lo, hi } = S();
+  const c = center();
+  const list = zone === 'low' ? naturalsIn(lo, lo + 5) : zone === 'high' ? naturalsIn(hi - 5, hi) : naturalsIn(c - 3, c + 3);
+  return list.length ? list : [c];
+};
+// 音階の主音：声域に収まる C・D・F・G・A・B♭ から
+const phraseTonic = (deg, avoid) => {
+  const span = Math.max(...deg);
+  const { lo, hi } = S();
+  const cands = range(lo, hi - span).filter((t) => [0, 2, 5, 7, 9, 10].includes(t % 12));
+  const pool = cands.filter((t) => t !== avoid);
+  if (pool.length) return randOf(pool);
+  return cands[0] ?? lo;
+};
+const startLong = () => {
+  const st = stageOf();
+  const specs = st ? Array(LONG_N).fill(st)
+    : [LONG_STAGES[1], randOf(LONG_STAGES.slice(4, 6)), { ...LONG_STAGES[2], sec: 4 }, randOf(LONG_STAGES.slice(6)), { ...LONG_STAGES[3], sec: 4 }];
+  run = { kind: 'long', mode: 'long', stage: stageIdx, specs, i: 0, scores: [], cents: [], q: null, tol: S().tol, prev: null };
+  setRunningUI(true);
+  beginLongItem();
+};
+const beginLongItem = () => {
+  if (!run) return;
+  const spec = run.specs[run.i];
+  setFeedback('');
+  $('count').innerHTML = `${run.i + 1}<small> / ${run.specs.length}</small>`;
+  setProg(run.i / run.specs.length);
+  if (spec.kind === 'tone') {
+    const list = zoneNotes(spec.zone);
+    const target = randOf(list.filter((m) => m !== run.prev).length ? list.filter((m) => m !== run.prev) : list);
+    run.prev = target;
+    const q = { kind: 'tone', target, sec: spec.sec, phase: 'listen', t0: 0, holdStart: 0, frames: [] };
+    run.q = q;
+    showSheet(false);
+    $('prompt').innerHTML = `<span class="big">${noteLabel(target)}</span><small>${spec.sec}秒、まっすぐ伸ばします</small>`;
+    setCue('♪ 聞いてください', 'listen');
+    const end = playSeq([target], 1.2);
+    later(() => { if (run && run.q === q) { q.phase = 'wait'; q.t0 = performance.now(); setCue('🎤 うたってください', 'sing'); } }, Math.max(0, end - performance.now()));
+    return;
+  }
+  // 音階
+  const tonic = phraseTonic(spec.deg, run.prev);
+  run.prev = tonic;
+  const flat = [5, 10].includes(tonic % 12);
+  const notes = spec.deg.map((d) => tonic + d);
+  const q = { kind: 'phrase', notes, flat, status: [], cur: -1, frames: notes.map(() => []), finalized: notes.map(() => false), noteTimes: null, beatMs: 60000 / S().bpm };
+  run.q = q;
+  showSheet(true);
+  renderNotes(notes.map((m) => ({ midi: m, flat })), { dur: 'q' });
+  $('prompt').innerHTML = `<small>${spec.short}（${pcName(tonic % 12, flat)}から）</small>`;
+  setCue('♪ 最初の音とカウント', 'listen');
+  ensureAudio();
+  const beat = q.beatMs / 1000;
+  const t0 = actx.currentTime + 0.08;
+  tone(notes[0], t0, 0.9);
+  const countAt = t0 + 1.05;
+  for (let i = 0; i < 4; i++) click(countAt + i * beat, i === 0);
+  const notesAt = countAt + 4 * beat;
+  muteFor(notesAt - 0.25);
+  const off = performance.now() - actx.currentTime * 1000;
+  q.countStart = off + countAt * 1000;
+  q.noteTimes = notes.map((_, i) => off + (notesAt + i * beat) * 1000);
+};
+const longTick = (now, m) => {
+  const q = run.q;
+  if (!q) return;
+  if (q.kind === 'tone') {
+    if (q.phase === 'wait') {
+      if (now - q.t0 > TIMEOUT) { endTone(false, '声が届きませんでした'); return; }
+      if (m != null && Math.abs(centsOff(m, q.target)) <= 100) { q.phase = 'hold'; q.holdStart = now; q.frames = []; }
+      else if (m != null) setFeedback(centsOff(m, q.target) < 0 ? '↑ もっと高く' : '↓ もっと低く', 'ng');
+    }
+    if (q.phase === 'hold') {
+      const el = now - q.holdStart;
+      q.frames.push(m == null ? null : centsOff(m, q.target));
+      setFeedback(`のばして… ${Math.max(0, q.sec - el / 1000).toFixed(1)}秒`, 'good');
+      setProg((run.i + Math.min(1, el / (q.sec * 1000))) / run.specs.length);
+      if (el >= q.sec * 1000) evalTone();
+    }
+    return;
+  }
+  // 音階
+  if (!q.noteTimes || q.done) return;
+  if (now < q.noteTimes[0]) {
+    if (now >= q.countStart) { setCue('カウント', 'listen'); $('prompt').innerHTML = `<span class="big">${Math.min(4, Math.floor((now - q.countStart) / q.beatMs) + 1)}</span>`; }
+    return;
+  }
+  const idx = Math.floor((now - q.noteTimes[0]) / q.beatMs);
+  if (q.cur === -1) { setCue('🎤 うたってください', 'sing'); $('prompt').innerHTML = ''; }
+  if (idx < q.notes.length && m != null && now - q.noteTimes[idx] >= q.beatMs * 0.3) q.frames[idx].push(centsOff(m, q.notes[idx]));
+  if (idx !== q.cur) {
+    for (let j = 0; j < Math.min(idx, q.notes.length); j++) if (!q.finalized[j]) finalizeNote(q, j);
+    q.cur = idx;
+    renderNotes(q.notes.map((x) => ({ midi: x, flat: q.flat })), { dur: 'q', status: q.status, cur: idx < q.notes.length ? idx : -1 });
+    setProg((run.i + Math.min(1, idx / q.notes.length)) / run.specs.length);
+  }
+  if (idx >= q.notes.length) evalPhrase();
+};
+const finalizeNote = (q, j) => {
+  q.finalized[j] = true;
+  const f = q.frames[j];
+  const tol = Math.max(run.tol * 1.5, 35);
+  if (f.length >= 3) {
+    const med = median(f);
+    q.status[j] = Math.abs(med) <= tol ? 'ok' : 'miss';
+    run.cents.push(Math.abs(med));
+  } else q.status[j] = 'miss';
+};
+const evalTone = () => {
+  const q = run.q;
+  const voiced = q.frames.filter((x) => x != null);
+  const ratio = voiced.length / Math.max(1, q.frames.length);
+  const dev = mean(voiced.map(Math.abs));
+  const avg = mean(voiced);
+  const sd = Math.sqrt(mean(voiced.map((x) => (x - avg) ** 2)));
+  const ok = ratio >= 0.8 && dev <= run.tol;
+  if (voiced.length) run.cents.push(dev);
+  const why = ratio < 0.8 ? '声が途切れました' : !ok ? `ずれが大きめ（平均 ${Math.round(dev)}セント・${avg < 0 ? '低め' : '高め'}）` : '';
+  endTone(ok, why, `平均のずれ ${Math.round(dev)}セント・ゆれ ${Math.round(sd)}セント`);
+};
+const endTone = (ok, why = '', detail = '') => {
+  const q = run.q;
+  q.phase = 'done';
+  run.scores.push(ok ? 1 : 0);
+  recordItem('long', `t${q.target}`, ok, 0);
+  popJudge(ok ? 'Good!' : '✗', ok ? 'perfect' : 'miss', detail);
+  setFeedback(ok ? `◎ ${detail}` : `✗ ${why}`, ok ? 'ok' : 'ng');
+  setCue('');
+  later(nextLongItem, 1600);
+};
+const evalPhrase = () => {
+  const q = run.q;
+  q.done = true;
+  q.notes.forEach((_, j) => { if (!q.finalized[j]) finalizeNote(q, j); });
+  const hits = q.status.filter((s) => s === 'ok').length;
+  const rate = hits / q.notes.length;
+  run.scores.push(rate);
+  recordItem('long', `p${run.i}`, rate >= 0.8, 0);
+  renderNotes(q.notes.map((x) => ({ midi: x, flat: q.flat })), { dur: 'q', status: q.status });
+  popJudge(rate >= 0.8 ? 'Good!' : '✗', rate >= 0.8 ? 'perfect' : 'miss', `${hits} / ${q.notes.length}音`);
+  setFeedback(`${rate >= 0.8 ? '◎' : '✗'} 合った音 ${hits} / ${q.notes.length}`, rate >= 0.8 ? 'ok' : 'ng');
+  setCue('');
+  later(nextLongItem, 1800);
+};
+const nextLongItem = () => {
+  if (!run) return;
+  run.i++;
+  if (run.i >= run.specs.length) finishLong();
+  else beginLongItem();
+};
+const finishLong = () => {
+  const r = run;
+  stopRun(false);
+  const score = mean(r.scores);
+  const avgC = mean(r.cents);
+  const line1 = `できた割合 ${Math.round(score * 100)}%・平均のずれ ${Math.round(avgC)}セント`;
+  if (r.stage === FREE) { showResult(null, line1, `${r.specs.length}回`); return; }
+  const stars = score < 0.8 ? 0 : (score >= 0.97 && avgC <= r.tol / 3) ? 3 : (score >= 0.9 && avgC <= r.tol / 2) ? 2 : 1;
+  const isBest = saveBest(bestKey('long', r.stage), { stars, rate: score, cents: avgC });
+  showResult(stars, line1, stars ? (stars < 3 ? `★3は97%以上・平均のずれ${Math.round(r.tol / 3)}セント以内` : 'まっすぐな声です') : 'クリアには8割以上', isBest);
+};
+const playDemo = () => {
+  if (run) return;
+  const st = stageOf();
+  const spec = st && st.kind === 'phrase' ? st : LONG_STAGES[4];
+  const t = phraseTonic(spec.deg, null);
+  ensureAudio();
+  const beat = 60 / S().bpm;
+  const t0 = actx.currentTime + 0.08;
+  spec.deg.forEach((d, i) => tone(t + d, t0 + i * beat, beat * 0.92));
+  muteFor(t0 + spec.deg.length * beat);
+};
+
+// ---- 開始・停止 ----
+const runTick = (now, m) => {
+  if (run.kind === 'flash') flashTick(now, m);
+  else longTick(now, m);
+};
+const startRun = async () => {
+  ensureAudio();
+  stopRun(false);
+  $('result').hidden = true;
+  const ok = await startMic();
+  if (!ok) {
+    $('micWarn').hidden = false;
+    $('micWarn').textContent = $('micStatus').title.replace('：', '。');
+    return;
+  }
+  $('micWarn').hidden = true;
+  if (mode === 'long') startLong();
+  else startFlash();
+};
+const stopRun = (showIdle = true) => {
+  clearTimers();
+  const wasFree = run && run.stage === FREE && run.kind === 'flash' && run.results.length;
+  const r = run;
+  run = null;
+  setRunningUI(false);
+  if (showIdle) {
+    if (wasFree) { run = r; finishFlash(); return; }
+    renderIdle();
+  }
+};
+const selectStage = (i) => {
+  stopRun(false);
+  stageIdx = i;
+  store.last = { mode, stage: i };
+  saveStore();
+  applyModeVisibility();
+  renderStageInfo();
+  $('result').hidden = true;
+  renderIdle();
+};
+// ---- 画面の切り替え ----
+let view = 'home';
+const goView = (v) => {
+  if (view === 'play' && v !== 'play') stopRun(false);
+  view = v;
+  document.body.dataset.view = v;
+  document.querySelectorAll('.tabs button').forEach((b) => {
+    if (b.dataset.tab === v) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  if (v === 'home') renderHome();
+  if (v === 'records') renderStats();
+  if (v === 'play') {
+    applyModeVisibility();
+    renderStageInfo();
+    $('result').hidden = true;
+    $('micWarn').hidden = true;
+    renderIdle();
+  }
+  window.scrollTo(0, 0);
+};
+const openPlay = (m, i) => {
+  stopRun(false);
+  mode = m;
+  stageIdx = i;
+  store.last = { mode: m, stage: i };
+  saveStore();
+  goView('play');
+};
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-play], [data-open], [data-goto-view], [data-tab], [data-close], [data-range], [data-voice]');
+  if (!t) return;
+  if (t.dataset.play) {
+    const [m, i] = t.dataset.play.split(':');
+    openPlay(m, Number(i));
+  } else if (t.dataset.open) {
+    if (t.dataset.open === 'obDlg') renderVoices();
+    $(t.dataset.open).showModal();
+  } else if (t.dataset.gotoView) {
+    e.preventDefault();
+    goView(t.dataset.gotoView);
+  } else if (t.dataset.tab) {
+    if (t.dataset.tab === 'play') openPlay(MODES.includes(store.last.mode) ? store.last.mode : 'match', store.last.stage ?? 0);
+    else goView(t.dataset.tab);
+  } else if (t.hasAttribute('data-close')) {
+    t.closest('dialog').close();
+  } else if (t.hasAttribute('data-range')) {
+    openRange();
+  } else if (t.dataset.voice) {
+    setVoice(t.dataset.voice);
+    $('obDlg').close();
+  }
+});
+document.querySelectorAll('dialog.sheet-dlg').forEach((d) => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
+$('playClose').addEventListener('click', () => goView('home'));
+$('settingsBtn').addEventListener('click', () => $('settingsDlg').showModal());
+$('micStatus').addEventListener('click', async () => { if (!mic.on) await startMic(); $('settingsDlg').showModal(); });
+$('micOnBtn').addEventListener('click', () => startMic());
+
+// ---- 声の種類・声域を測る ----
+const setRange = (lo, hi) => {
+  lo = Math.max(36, Math.min(84 - MIN_SPAN, Math.round(lo)));
+  hi = Math.max(lo + MIN_SPAN, Math.min(88, Math.round(hi)));
+  S().lo = lo;
+  S().hi = hi;
+};
+const setVoice = (v) => {
+  S().voice = v;
+  if (VOICES[v]) setRange(VOICES[v].lo, VOICES[v].hi);
+  S().onboarded = true;
+  saveStore();
+  syncSettingsUI();
+  renderHome();
+  if (view === 'play' && !run) { renderStageInfo(); renderIdle(); }
+};
+const renderVoices = () => {
+  $('voices').innerHTML = Object.entries(VOICES).map(([k, v]) => `<button type="button" data-voice="${k}" aria-pressed="${S().voice === k}"><b>${v.name}</b><small>${v.sub}</small><small>${noteLabel(v.lo)}〜${noteLabel(v.hi)}</small></button>`).join('');
+};
+const rg = { active: false, step: 'low', low: null, high: null };
+const renderRange = () => {
+  $('rgMsg').textContent = rg.step === 'low'
+    ? 'らくに出せる、いちばん低い声で「あー」と伸ばしてください。少しずつ下げていくと測りやすいです。記録できたら「次へ」。'
+    : '今度は、いちばん高い声で「あー」。裏声でもかまいません。少しずつ上げていきます。記録できたら「決める」。';
+  $('rgLow').textContent = rg.low != null ? noteLabel(rg.low) : '—';
+  $('rgHigh').textContent = rg.high != null ? noteLabel(rg.high) : '—';
+  $('rgLowBox').classList.toggle('cur', rg.step === 'low');
+  $('rgHighBox').classList.toggle('cur', rg.step === 'high');
+  $('rgNext').textContent = rg.step === 'low' ? '次へ' : '決める';
+  $('rgNext').disabled = rg.step === 'low' ? rg.low == null : rg.high == null;
+};
+const openRange = async () => {
+  ['obDlg', 'settingsDlg'].forEach((id) => { if ($(id).open) $(id).close(); });
+  Object.assign(rg, { active: true, step: 'low', low: null, high: null });
+  renderRange();
+  $('rgLive').textContent = '—';
+  $('rangeDlg').showModal();
+  const ok = await startMic();
+  if (!ok) $('rgMsg').textContent = $('micStatus').title.replace('：', '。');
+};
+const rangeTick = (now, m) => {
+  $('rgLive').textContent = m != null ? noteLabel(Math.round(m)) : '—';
+  const s = stableNote(now);
+  if (s == null || s < 33 || s > 91) return;
+  if (rg.step === 'low' && (rg.low == null || s < rg.low)) { rg.low = s; renderRange(); }
+  if (rg.step === 'high' && (rg.high == null || s > rg.high)) { rg.high = s; renderRange(); }
+};
+$('rgNext').addEventListener('click', () => {
+  if (rg.step === 'low') { rg.step = 'high'; renderRange(); return; }
+  if (rg.high - rg.low < MIN_SPAN) {
+    $('rgMsg').textContent = `低い声と高い声の差が1オクターブ（12半音）より小さいようです（いま ${rg.high - rg.low}半音）。もう少し上まで伸ばしてみてください。`;
+    return;
+  }
+  // 端の音は避けて、内側を練習に使う
+  const inner = rg.high - rg.low >= MIN_SPAN + 4;
+  setRange(inner ? rg.low + 2 : rg.low, inner ? rg.high - 2 : rg.high);
+  S().voice = 'custom';
+  S().onboarded = true;
+  saveStore();
+  syncSettingsUI();
+  $('rangeDlg').close();
+  renderHome();
+  if (view === 'play' && !run) { renderStageInfo(); renderIdle(); }
+});
+$('rgRetry').addEventListener('click', () => { Object.assign(rg, { step: 'low', low: null, high: null }); renderRange(); });
+$('rangeDlg').addEventListener('close', () => { rg.active = false; });
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, select, textarea') || document.querySelector('dialog[open]') || view !== 'play') return;
+  if (e.key === 'Escape' && run) { e.preventDefault(); stopRun(); return; }
+  if (e.key === 'Enter' && !run && !e.target.closest('button')) { e.preventDefault(); startRun(); return; }
+  if ((e.key === 'r' || e.key === 'R') && run) { e.preventDefault(); hearAgain(); }
+});
+$('startBtn').addEventListener('click', startRun);
+$('stopBtn').addEventListener('click', () => stopRun());
+$('hintBtn').addEventListener('click', hearAgain);
+$('demoBtn').addEventListener('click', playDemo);
+const setBpm = (v) => {
+  const n = Math.max(40, Math.min(160, Math.round(Number(v) || 72)));
+  S().bpm = n;
+  $('bpmInput').value = n;
+  saveStore();
+};
+$('bpmInput').addEventListener('change', (e) => setBpm(e.target.value));
+$('bpmDown').addEventListener('click', () => setBpm(S().bpm - 4));
+$('bpmUp').addEventListener('click', () => setBpm(S().bpm + 4));
+
+// ---- 設定 ----
+const noteOptions = (a, b) => range(a, b).map((m) => `<option value="${m}">${noteLabel(m)}</option>`).join('');
+const syncSettingsUI = () => {
+  const st = S();
+  $('voiceSel').innerHTML = Object.entries(VOICES).map(([k, v]) => `<option value="${k}">${v.name}（${noteLabel(v.lo)}〜${noteLabel(v.hi)}）</option>`).join('')
+    + '<option value="custom">マイクで測った・自分で決めた声域</option>';
+  $('voiceSel').value = VOICES[st.voice] ? st.voice : 'custom';
+  $('loSel').innerHTML = noteOptions(36, 84 - MIN_SPAN);
+  $('hiSel').innerHTML = noteOptions(36 + MIN_SPAN, 88);
+  $('loSel').value = String(st.lo);
+  $('hiSel').value = String(st.hi);
+  $('clefSel').value = st.clef;
+  $('tolSel').value = String(st.tol);
+  $('octaveChk').checked = st.octaveFree;
+  $('gateInput').value = st.gate;
+  $('namesSel').value = st.names;
+  $('goalSel').value = String(st.goal);
+  $('volInput').value = st.vol;
+  $('bpmInput').value = st.bpm;
+};
+const afterRangeChange = () => {
+  saveStore();
+  renderHome();
+  if (view === 'play' && !run) { renderStageInfo(); renderIdle(); }
+};
+const bindSettings = () => {
+  const st = S();
+  const on = (id, ev, fn) => $(id).addEventListener(ev, (e) => { fn(e.target); saveStore(); });
+  on('voiceSel', 'change', (t) => { if (VOICES[t.value]) setVoice(t.value); else { st.voice = 'custom'; afterRangeChange(); } });
+  on('loSel', 'change', (t) => { setRange(Number(t.value), Math.max(st.hi, Number(t.value) + MIN_SPAN)); st.voice = 'custom'; syncSettingsUI(); afterRangeChange(); });
+  on('hiSel', 'change', (t) => { setRange(Math.min(st.lo, Number(t.value) - MIN_SPAN), Number(t.value)); st.voice = 'custom'; syncSettingsUI(); afterRangeChange(); });
+  on('clefSel', 'change', (t) => { st.clef = t.value; if (view === 'play' && !run) renderIdle(); });
+  on('tolSel', 'change', (t) => { st.tol = Number(t.value) || 30; });
+  on('octaveChk', 'change', (t) => { st.octaveFree = t.checked; });
+  on('gateInput', 'input', (t) => { st.gate = Number(t.value); });
+  on('namesSel', 'change', (t) => { st.names = t.value; syncSettingsUI(); renderHome(); renderStats(); if (view === 'play' && !run) { renderStageInfo(); renderIdle(); } });
+  on('goalSel', 'change', (t) => { st.goal = Number(t.value) || 30; renderHome(); });
+  on('volInput', 'input', (t) => { st.vol = Number(t.value); if (master) master.gain.value = st.vol; });
+  $('resetBtn').addEventListener('click', () => {
+    if (!confirm('成績の記録（★・合わせた割合・続けた日数）を消します。設定と声域は残ります。よろしいですか？')) return;
+    const keep = store.settings;
+    store = { ...defaultStore(), settings: keep };
+    saveStore();
+    renderHome();
+    renderStats();
+  });
+};
+
+setMicStatus('', 'マイク オフ', '練習のスタートか、ここを押すとオンになります。');
+syncSettingsUI();
+bindSettings();
+goView('home');
+window.addEventListener('resize', () => { if (view === 'play') drawTrail(performance.now()); });
+if (!S().onboarded) { renderVoices(); $('obDlg').showModal(); }
+</script>
+</body>
+</html>
