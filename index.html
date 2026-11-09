@@ -406,6 +406,24 @@ dialog.sheet-dlg[open] { animation: sheetIn .28s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   .judge, .stars span.on, .result .best, .node.next .dot, .result, dialog.sheet-dlg[open] { animation: none; }
 }
+/* ---- 有料版・アカウント ---- */
+.node.locked .dot { background: #f1ecef; color: #a99aa3; box-shadow: 0 4px 0 #e2d8dd; }
+.node.locked .nm { color: #957a88; }
+.tile.locked b::after { content: " 🔒"; }
+.node .tag { display: inline-block; font-size: .72rem; font-weight: 700; color: var(--accent-dark); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+.plan-status { font-size: .92rem; }
+.plan-btns { justify-content: flex-start; }
+.plan-legal { font-size: .78rem; color: var(--muted); }
+.acct-error { color: var(--ng); font-size: .9rem; }
+.acct-code { font-family: ui-monospace, Consolas, monospace; font-size: 1.2rem; letter-spacing: .05em; padding: 10px; background: var(--accent-soft); border-radius: 12px; text-align: center; }
+#acctDlg p, #upsellDlg p { margin: 0 0 12px; font-size: .94rem; }
+#acctDlg input { width: 100%; margin-bottom: 12px; }
+#upsellDlg ul { margin: 0 0 14px; padding-left: 1.2em; font-size: .92rem; }
+.toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 20px; border-radius: 999px; z-index: 60; font-weight: 700; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); animation: toastIn 3.2s both; white-space: nowrap; }
+@keyframes toastIn { 0% { opacity: 0; transform: translate(-50%, 20px); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 10px); } }
+body[data-mode="song"] .sheet { max-width: 900px; justify-items: start; }
+body[data-mode="song"] #score { justify-items: start; }
+body[data-mode="song"] #score svg { max-width: none; }
 </style>
 </head>
 <body data-view="home" data-mode="match">
@@ -604,10 +622,62 @@ dialog.sheet-dlg[open] { animation: sheetIn .28s ease-out; }
         <span>お手本の音量</span>
         <input id="volInput" type="range" min="0" max="1" step="0.05">
       </label>
+      <div class="field wide" id="planField" hidden>
+        <h3 style="margin:6px 0 0">アカウント・有料版</h3>
+        <div id="planStatus" class="plan-status"></div>
+        <div id="planBtns" class="controls plan-btns"></div>
+        <div class="plan-legal">申し込むと<a href="https://habatakijuku.com/legal/terms.html" target="_blank" rel="noopener">利用規約</a>に同意したものとみなします。<a href="https://habatakijuku.com/legal/tokushoho.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>・<a href="https://habatakijuku.com/legal/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></div>
+      </div>
       <div class="field wide">
         <button id="resetBtn" class="ghost" type="button">成績の記録を消す</button>
       </div>
     </section>
+  </div>
+</dialog>
+
+<!-- 有料版の案内 -->
+<dialog id="upsellDlg" class="sheet-dlg" aria-labelledby="upsellTitle">
+  <div class="dlg-in">
+    <div class="dlg-head"><h2 id="upsellTitle">有料版で練習できます</h2><button type="button" class="icon" data-close aria-label="閉じる">✕</button></div>
+    <p id="upsellMsg"></p>
+    <ul>
+      <li>音程・五線譜・ロングトーンの道の、すべてのステージと自由練習</li>
+      <li>曲の道の、すべての曲を最後まで</li>
+      <li>練習の記録をスマホとパソコンで同期</li>
+    </ul>
+    <p>月480円。解約はいつでも、設定の「お支払い・解約」からできます。</p>
+    <div class="controls"><button type="button" id="upsellBuy" class="gold">有料版にする（月480円）</button><button type="button" class="ghost" data-close>あとで</button></div>
+    <p class="plan-legal" style="margin-top:12px">申し込むと<a href="https://habatakijuku.com/legal/terms.html" target="_blank" rel="noopener">利用規約</a>に同意したものとみなします。<a href="https://habatakijuku.com/legal/tokushoho.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>・<a href="https://habatakijuku.com/legal/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p>
+  </div>
+</dialog>
+
+<!-- アカウント（パスキー） -->
+<dialog id="acctDlg" class="sheet-dlg" aria-labelledby="acctTitle">
+  <div class="dlg-in">
+    <div class="dlg-head"><h2 id="acctTitle">ヴォーカルトレーナー アカウント</h2><button type="button" class="icon" id="acctClose" aria-label="閉じる">✕</button></div>
+    <p id="acctMsg"></p>
+    <div data-view="register">
+      <p>表示名（ニックネーム）を決めて、この端末にパスキーを作ります。</p>
+      <input id="acctName" maxlength="30" placeholder="ニックネーム" autocomplete="nickname">
+      <div class="controls"><button id="acctRegisterBtn" type="button">パスキーを作って続ける</button></div>
+      <p style="margin-top:14px">前に作った方は <button type="button" class="link" data-goto="login">パスキーでログイン</button></p>
+    </div>
+    <div data-view="login" hidden>
+      <p>この端末（または同じアカウントの端末）に保存したパスキーでログインします。</p>
+      <div class="controls"><button id="acctLoginBtn" type="button">パスキーでログイン</button></div>
+      <p style="margin-top:14px">パスキーをなくした方は <button type="button" class="link" data-goto="recover">復旧コードを使う</button>／初めての方は <button type="button" class="link" data-goto="register">パスキーを作る</button></p>
+    </div>
+    <div data-view="recover" hidden>
+      <p>登録したときにメモした復旧コードを入れてください。</p>
+      <input id="acctCode" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off">
+      <div class="controls"><button id="acctRecoverBtn" type="button">復旧コードでログイン</button></div>
+    </div>
+    <div data-view="recovery" hidden>
+      <p>パスキーをなくしたときに使う<strong>復旧コード</strong>です。この画面にしか出ないので、メモして大切に保管してください。</p>
+      <p id="acctRecovery" class="acct-code"></p>
+      <div class="controls"><button id="acctRecoveryDone" type="button">メモしました</button></div>
+    </div>
+    <p id="acctError" class="acct-error" hidden></p>
   </div>
 </dialog>
 
@@ -657,6 +727,9 @@ dialog.sheet-dlg[open] { animation: sheetIn .28s ease-out; }
     <p>音合わせ・音程・五線譜は1ステージ20問。<b>時間内に合わせられた問題が16問以上</b>で、合わせるまでの<b>平均時間が目安以内</b>（音合わせ3秒・音程4秒・五線譜4秒）ならクリアです。★は、合わせられた数と、保っていたあいだのずれの小ささで決まります。「答えの音を聞く」を使った問題は、合わせても数えません。</p>
     <p>ロングトーンは1ステージ5回。伸ばす練習は、声が途切れず（8割以上）平均のずれが幅の中なら成功。音階は、それぞれの音の後半のずれで判定します。全体の8割以上でクリアです。</p>
     <p>音程と五線譜では、答えがわからないように、グラフに目標の高さを出しません（答えたあとに出ます）。</p>
+    <p>曲の道は、フレーズごとにお手本を聞いてから、カウントのあとに楽譜どおりに歌います。曲は声域に入るように高さを変えて出します（音符の下のドレミは、その曲の「ド」から数えた名前です）。休符は数えず、0.3秒より短い音は合ったときだけ数えます。全体で合った音が8割以上でクリアです。</p>
+    <h3>無料版と有料版</h3>
+    <p>音合わせの道はすべて無料です。音程・五線譜・ロングトーンの道は最初の2ステージ、曲の道は「メリーさんのひつじ」「きらきら星」「かえるの合唱」の3曲と、ほかの曲の最初のフレーズが無料です。有料版（月480円）にすると、すべてのステージ・自由練習・曲を練習でき、練習の記録を端末どうしで同期できます（記録の同期は無料の会員登録でも使えます）。</p>
     <h3>音程の名前</h3>
     <table>
       <tr><th>名前</th><th>半音の数</th><th>ドレミで言うと</th></tr>
@@ -681,6 +754,9 @@ dialog.sheet-dlg[open] { animation: sheetIn .28s ease-out; }
   </div>
 </dialog>
 
+<script src="songs.js?v=1"></script>
+<script src="record-sync.js?v=1"></script>
+<script src="billing.js?v=1"></script>
 <script>
 'use strict';
 const VF = Vex.Flow;
@@ -712,8 +788,10 @@ const loadStore = () => {
 };
 let store = loadStore();
 const saveStore = () => {
+  store.mtime = Date.now();
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
   catch (e) { console.warn('記録を保存できませんでした', e); }
+  scheduleRecordPush();
 };
 const S = () => store.settings;
 
@@ -818,8 +896,44 @@ const LONG_STAGES = [
   { short: 'ドレミファソファミレド', desc: '上がって、下がる。', kind: 'phrase', deg: [0, 2, 4, 5, 7, 5, 4, 2, 0] },
   { short: 'ドミソド', desc: '和音の音を1つずつ（アルペジオ）。跳ぶ音程を正確に。', kind: 'phrase', deg: [0, 4, 7, 12, 7, 4, 0] },
 ];
-const STAGES = { match: MATCH_STAGES, interval: INTERVAL_STAGES, staff: STAFF_STAGES, long: LONG_STAGES };
+const STAGES = { match: MATCH_STAGES, interval: INTERVAL_STAGES, staff: STAFF_STAGES, long: LONG_STAGES, song: [] };
 const FREE = -1;
+
+// ---- 曲の道（メロディは songs.js。有料版では billing.js が完全版に差し替える）----
+const DUR_BEATS = { w: 4, h: 2, q: 1, 8: 0.5, 16: 0.25 };
+// "e4/q." → { midi, beats, vf, dots, acc }（休符は midi: null）
+const parseToken = (tok) => {
+  const [p, d0] = tok.replace(/~$/, '').split('/');
+  const dots = (d0.match(/\./g) || []).length;
+  const d = d0.replace(/\./g, '');
+  const beats = DUR_BEATS[d] * (dots ? 1.5 : 1);
+  if (p === 'r') return { midi: null, beats, vf: d, dots };
+  const m = p.match(/^([a-g])([#b]?)(-?\d)$/);
+  if (!m) throw new Error(`曲の音符を読めません: ${tok}`);
+  const midi = NAT_PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (Number(m[3]) + 1) * 12;
+  return { midi, beats, vf: d, dots, letter: m[1].toUpperCase() };
+};
+const songNotes = (song, [a, b]) => song.mel.slice(a, b).map((bar, k) => bar.trim().split(/\s+/).map((t) => ({ ...parseToken(t), bar: a + k })));
+// 声域に入るように移調する（オクターブだけで入ればそれを優先）。半音ずらすときは調に合わせて♭で書くことも
+const songShift = (song) => {
+  const ms = song.phrases.flatMap((ph) => songNotes(song, ph).flat()).map((n) => n.midi).filter((m) => m != null);
+  const lo = Math.min(...ms);
+  const hi = Math.max(...ms);
+  const { lo: vl, hi: vh } = S();
+  const mid = (vl + vh) / 2;
+  const cands = range(-30, 30).filter((s) => lo + s >= vl && hi + s <= vh);
+  const score = (s) => Math.abs((lo + hi) / 2 + s - mid) + (s % 12 === 0 ? 0 : 3);
+  const s = cands.length ? cands.reduce((x, y) => (score(y) < score(x) ? y : x))
+    : Math.round(mid - (lo + hi) / 2);
+  return { shift: s, flat: [1, 3, 5, 8, 10].includes(((s % 12) + 12) % 12) };
+};
+const buildSongStages = () => {
+  STAGES.song = SONGS.map((s) => ({
+    id: s.id, short: s.title, song: s, locked: !!s.locked,
+    desc: `${s.composer}。${s.credit}`,
+  }));
+};
+buildSongStages();
 
 // 出題する項目
 const itemsFor = (mode, stage) => {
@@ -1076,14 +1190,14 @@ const currentTarget = () => {
   if (!q) return null;
   if (q.kind === 'tone') return q.target;
   const now = performance.now();
-  const i = q.noteTimes ? q.noteTimes.findIndex((t) => now < t + q.beatMs) : -1;
+  const i = q.noteTimes ? q.noteTimes.findIndex((t, k) => now < (q.ends ? q.ends[k] : t + q.beatMs)) : -1;
   return i >= 0 ? q.notes[i] : null;
 };
 const trailTargets = (now) => {
   if (!run || !run.q) return [];
   const q = run.q;
-  if (run.kind === 'long' && q.kind === 'phrase' && q.noteTimes) {
-    return q.notes.map((m, i) => ({ t0: q.noteTimes[i], t1: q.noteTimes[i] + q.beatMs, m }));
+  if ((run.kind === 'long' || run.kind === 'song') && q.kind === 'phrase' && q.noteTimes) {
+    return q.notes.map((m, i) => ({ t0: q.noteTimes[i], t1: q.ends ? q.ends[i] : q.noteTimes[i] + q.beatMs, m })).filter((x) => x.m != null);
   }
   const tg = currentTarget();
   return tg == null ? [] : [{ t0: now - TRAIL_MS, t1: now + 3000, m: tg }];
@@ -1219,6 +1333,83 @@ const renderNotes = (notes, { dur = 'w', status = [], cur = -1 } = {}) => {
   if (svg) { svg.setAttribute('viewBox', `0 0 ${w} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = `${w}px`; }
 };
 
+// 長調の名前と調号の数（♭の調は songShift で flat: true になる主音）
+const KEY_NAME = { 0: 'C', 1: 'Db', 2: 'D', 3: 'Eb', 4: 'E', 5: 'F', 6: 'F#', 7: 'G', 8: 'Ab', 9: 'A', 10: 'Bb', 11: 'B' };
+const KEY_ACCS = { 0: 0, 1: 5, 2: 2, 3: 3, 4: 4, 5: 1, 6: 6, 7: 1, 8: 4, 9: 3, 10: 2, 11: 5 };
+// 曲のフレーズを、小節ごとの五線で書く。status / cur はフレーズの中の音符の通し番号
+const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
+  const el = $('score');
+  el.innerHTML = '';
+  const H = 190;
+  const head = 78;
+  const widths = bars.map((b, k) => 46 + b.length * 40 + (k === 0 ? head + 12 * KEY_ACCS[((sh.shift % 12) + 12) % 12] : 0));
+  const w = widths.reduce((a, b) => a + b, 0) + 20;
+  const r = new VF.Renderer(el, VF.Renderer.Backends.SVG);
+  r.resize(w, H);
+  const ctx = r.getContext();
+  const [num, den] = song.time.split('/').map(Number);
+  const COLORS = { ok: 'rgba(46,139,87,.22)', miss: 'rgba(200,67,58,.22)' };
+  // 曲はハ長調で書いてあるので、移調した先の長調の調号を付け、調の中の音には臨時記号を付けない
+  const keyPc = ((sh.shift % 12) + 12) % 12;
+  const inKey = (m) => [0, 2, 4, 5, 7, 9, 11].includes((((m - keyPc) % 12) + 12) % 12);
+  let x = 10;
+  let idx = 0;
+  bars.forEach((bar, k) => {
+    const stave = new VF.Stave(x, 28, widths[k]);
+    if (k === 0) {
+      if (clefOf() === 'treble8vb') stave.addClef('treble', 'default', '8vb');
+      else stave.addClef(vfClef());
+      stave.addKeySignature(KEY_NAME[keyPc]);
+      stave.addTimeSignature(song.time);
+    }
+    stave.setContext(ctx).draw();
+    x += widths[k];
+    const vn = bar.map((n) => {
+      const dur = n.vf + (n.midi == null ? 'r' : '');
+      if (n.midi == null) {
+        const sn = new VF.StaveNote({ keys: [vfClef() === 'bass' ? 'd/3' : 'b/4'], duration: dur, clef: vfClef() });
+        if (n.dots) VF.Dot.buildAndAttach([sn], { all: true });
+        return sn;
+      }
+      const m = n.midi + sh.shift;
+      const sp = spell(writtenOf(m), sh.flat);
+      const sn = new VF.StaveNote({ keys: [sp.key], duration: dur, clef: vfClef(), auto_stem: true });
+      if (sp.acc && !inKey(m)) sn.addModifier(new VF.Accidental(sp.acc), 0);
+      if (n.dots) VF.Dot.buildAndAttach([sn], { all: true });
+      const label = S().names === 'doremi' ? DOREMI[n.letter] : pcName(m % 12, sh.flat);
+      sn.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
+      return sn;
+    });
+    const voice = new VF.Voice({ num_beats: num, beat_value: den }).setMode(VF.Voice.Mode.SOFT);
+    voice.addTickables(vn);
+    vn.forEach((n) => n.setStave(stave));
+    const beams = VF.Beam.generateBeams(vn.filter((n) => !n.isRest()));
+    new VF.Formatter().joinVoices([voice]).formatToStave([voice], stave);
+    const top = stave.getYForLine(0) - 14;
+    const hgt = stave.getYForLine(4) - stave.getYForLine(0) + 28;
+    vn.forEach((n, j) => {
+      const fill = idx + j === cur ? 'rgba(194,54,122,.24)' : COLORS[status[idx + j]];
+      if (!fill) return;
+      ctx.save();
+      ctx.setFillStyle(fill);
+      ctx.fillRect(n.getAbsoluteX() - 6, top, n.getWidth() + 12, hgt);
+      ctx.restore();
+    });
+    voice.draw(ctx, stave);
+    beams.forEach((b) => b.setContext(ctx).draw());
+    idx += bar.length;
+  });
+  const svg = el.querySelector('svg');
+  if (svg) { svg.setAttribute('viewBox', `0 0 ${w} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = `${w}px`; }
+  // いま歌う音が見えるように横にずらす
+  const box = $('sheetBox');
+  if (cur >= 0 && box.scrollWidth > box.clientWidth) {
+    let n = 0;
+    const curBar = bars.findIndex((b) => (n += b.length) > cur);
+    box.scrollLeft = Math.max(0, widths.slice(0, curBar).reduce((a, b) => a + b, 0) - box.clientWidth / 3);
+  } else if (cur < 0) box.scrollLeft = 0;
+};
+
 // ---- 状態 ----
 let mode = 'match';
 let stageIdx = 0;
@@ -1227,7 +1418,7 @@ let timers = [];
 const later = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
 const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
 const stageOf = () => (stageIdx === FREE ? null : STAGES[mode][stageIdx]);
-const bestKey = (m, i) => `${m}:${i}`;
+const bestKey = (m, i) => (m === 'song' ? `song:${STAGES.song[i]?.id}` : `${m}:${i}`);
 const bestStars = (m, i) => store.best[bestKey(m, i)]?.stars || 0;
 const starText = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
 const dayStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1262,14 +1453,20 @@ const MODE_INFO = {
   interval: { name: '音程', lane: '音程の道', desc: '基準の音から「○度上」を歌う', icon: '🪜', bg: '#fff1d6' },
   staff: { name: '五線譜', lane: '五線譜の道', desc: '音符を見て、聞かずに歌う（視唱）', icon: '🎼', bg: '#ece9fe' },
   long: { name: 'ロングトーン', lane: 'ロングトーンの道', desc: '同じ高さでまっすぐ伸ばす・音階をなぞる', icon: '🌬️', bg: '#e1f3ee' },
+  song: { name: '曲', lane: '曲の道', desc: '知っている歌のメロディを、楽譜を見ながら歌う', icon: '🎶', bg: '#e8eef6' },
 };
-const MODES = Object.keys(MODE_INFO);
+// ステージの道（曲の道は別あつかい）
+const MODES = ['match', 'interval', 'staff', 'long'];
 const needsBpm = () => mode === 'long' && (stageIdx === FREE || stageOf().kind === 'phrase');
+// 有料版でだけ練習できるか（音合わせの道と、ほかの道の最初の2つは無料。曲は最初のフレーズまで無料）
+const FREE_STAGES = 2;
+const isLocked = (m, i) => BILLING_ON && !account.paid && ['interval', 'staff', 'long'].includes(m) && (i === FREE || i >= FREE_STAGES);
 const applyModeVisibility = () => {
   document.body.dataset.mode = mode;
   $('bpmRow').classList.toggle('mode-off', !needsBpm());
-  $('demoBtn').classList.toggle('mode-off', !needsBpm());
+  $('demoBtn').classList.toggle('mode-off', !needsBpm() && mode !== 'song');
   const notes = {
+    song: 'お手本のフレーズを聞いたら、カウントのあとに楽譜どおりに歌います。ドレミでも「ら」でもかまいません。音はそれぞれの音符の後半で判定します。',
     match: 'お手本の音が鳴ったら、同じ高さで「あー」と歌います。グラフの帯に入って0.4秒保てたら正解。',
     interval: '基準の音が鳴ったら、指定の音程だけ上（↓なら下）の音を歌います。',
     staff: '基準の「ド」を聞いてから、楽譜の音符を歌います。わからないときは「答えの音を聞く」。',
@@ -1289,15 +1486,30 @@ const ringSvg = (frac) => {
   const c = 2 * Math.PI * r;
   return `<svg viewBox="0 0 92 92"><circle class="track" cx="46" cy="46" r="${r}" fill="none" stroke-width="9"/><circle class="fill" cx="46" cy="46" r="${r}" fill="none" stroke-width="9" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(1, frac))}"/></svg>`;
 };
+const songLane = () => {
+  const list = STAGES.song;
+  if (!list.length) return '';
+  const got = list.reduce((a, _, i) => a + bestStars('song', i), 0);
+  const nodes = list.map((s, i) => {
+    const stars = bestStars('song', i);
+    const part = s.locked && BILLING_ON;
+    return `<button type="button" class="node ${stars ? 'done' : 'later'}" data-play="song:${i}" aria-label="曲 ${s.short}（★${stars}）">`
+      + `<span class="dot">${stars ? '✓' : '♪'}</span>`
+      + `<span><span class="nm">${s.short}${part ? '<span class="tag">最初のフレーズだけ無料</span>' : ''}</span><span class="st${stars ? '' : ' none'}">${starText(stars)}</span><span class="sub">${s.desc}</span></span></button>`;
+  }).join('');
+  return `<div class="card lane">${laneHead('song', `<span class="cnt">★ ${got}/${list.length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
+};
 const renderHome = () => {
-  const lm = MODES.includes(store.last.mode) ? store.last.mode : 'match';
+  const isSong = store.last.mode === 'song' && !!STAGES.song[store.last.stage];
+  const lm = isSong || MODES.includes(store.last.mode) ? store.last.mode : 'match';
   const nx = nextStageOf(lm);
-  const li = store.last.stage >= 0 && store.last.stage < STAGES[lm].length && bestStars(lm, store.last.stage) === 0
-    ? store.last.stage : (nx >= 0 ? nx : STAGES[lm].length - 1);
+  const li = isSong ? store.last.stage
+    : store.last.stage >= 0 && store.last.stage < STAGES[lm].length && bestStars(lm, store.last.stage) === 0
+      ? store.last.stage : (nx >= 0 ? nx : STAGES[lm].length - 1);
   const st = STAGES[lm][li];
   const fresh = !store.total.n;
   $('continueCard').innerHTML = `<span class="kicker">${fresh ? 'まずはここから' : '続きから'}・${MODE_INFO[lm].lane}</span>`
-    + `<h2>ステージ${li + 1}　${st.short}</h2><p>${st.desc}</p>`
+    + `<h2>${isSong ? st.short : `ステージ${li + 1}　${st.short}`}</h2><p>${st.desc}</p>`
     + `<span class="stars-line" aria-label="★${bestStars(lm, li)}">${starText(bestStars(lm, li))}</span>`
     + `<button type="button" class="big" data-play="${lm}:${li}">▶ ${fresh ? 'はじめる' : '続ける'}</button>`;
   const todayN = store.daily.last === today() ? store.daily.today : 0;
@@ -1316,19 +1528,26 @@ const renderHome = () => {
     const n = nextStageOf(m);
     const nodes = STAGES[m].map((s, i) => {
       const stars = bestStars(m, i);
-      const cls = stars ? 'done' : i === n ? 'next' : 'later';
-      return `<button type="button" class="node ${cls}" data-play="${m}:${i}" aria-label="${MODE_INFO[m].name} ステージ${i + 1} ${s.short}（★${stars}）">`
-        + `<span class="dot">${stars ? '✓' : i + 1}</span>`
+      const lock = isLocked(m, i);
+      const cls = lock ? 'locked' : stars ? 'done' : i === n ? 'next' : 'later';
+      return `<button type="button" class="node ${cls}" data-play="${m}:${i}" aria-label="${MODE_INFO[m].name} ステージ${i + 1} ${s.short}（${lock ? '有料版' : `★${stars}`}）">`
+        + `<span class="dot">${lock ? '🔒' : stars ? '✓' : i + 1}</span>`
         + `<span><span class="nm">${s.short}</span><span class="st${stars ? '' : ' none'}">${starText(stars)}</span><span class="sub">${s.desc}</span></span></button>`;
     }).join('');
     return `<div class="card lane">${laneHead(m, `<span class="cnt">★ ${starsOf(m)}/${STAGES[m].length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
-  }).join('');
-  $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
+  }).join('') + songLane();
+  $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile${isLocked(m, FREE) ? ' locked' : ''}" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
     + '<button type="button" class="tile" data-range><span class="ic" style="background:#fbe5ef">🎤</span><span><b>声域を測る</b><small>いちばん低い声と高い声を歌って、練習の音域を決める</small></span></button>'
     + '<button type="button" class="tile" data-open="helpDlg"><span class="ic" style="background:#e8eef6">📖</span><span><b>音程と楽譜の見方</b><small>音程の名前・ト音記号とヘ音記号・セント</small></span></button>';
 };
 const renderStageInfo = () => {
   const st = stageOf();
+  if (mode === 'song') {
+    const s = st.song;
+    const part = s.locked ? `<br><span class="rule">無料版は最初のフレーズだけ（全${s.fullPhrases}フレーズ）</span>` : '';
+    $('stageInfo').innerHTML = `<b>${s.title}</b>${s.composer}。${s.credit}<br><span class="rule">クリア：全体で合った音が8割以上（${s.time}拍子・♩=${s.tempo}）</span><br><span class="rule">声域 ${rangeText()}</span>${part}`;
+    return;
+  }
   if (!st) {
     $('stageInfo').innerHTML = `<b>自由練習・${MODE_INFO[mode].name}</b>${mode === 'long'
       ? 'のばす練習と音階をまぜて5回。'
@@ -1343,7 +1562,8 @@ const renderStageInfo = () => {
 const setProg = (frac) => { $('playProg').style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`; };
 const renderPlayHead = () => {
   const st = stageOf();
-  $('playTitle').textContent = `${MODE_INFO[mode].lane}　${st ? `ステージ${stageIdx + 1}・${st.short}` : '自由練習'}`;
+  $('playTitle').textContent = mode === 'song' ? `曲の道　${st.short}`
+    : `${MODE_INFO[mode].lane}　${st ? `ステージ${stageIdx + 1}・${st.short}` : '自由練習'}`;
 };
 const popJudge = (text, cls, sub = '') => {
   const layer = $('judgeLayer');
@@ -1374,6 +1594,10 @@ const renderIdle = () => {
     showSheet(true);
     const t = phraseTonic(st.deg, null);
     renderNotes(st.deg.map((d) => ({ midi: t + d, flat: [5, 10].includes(t % 12) })), { dur: 'q' });
+  } else if (mode === 'song') {
+    showSheet(true);
+    const s = st.song;
+    renderSong(s, songNotes(s, s.phrases[0]), songShift(s));
   } else showSheet(false);
   drawTrail(performance.now());
   updateReadout(null);
@@ -1409,7 +1633,7 @@ const renderStats = () => {
 const setRunningUI = (running) => {
   $('intro').hidden = running;
   $('stopBtn').hidden = !running;
-  $('hintBtn').hidden = !running || mode === 'long';
+  $('hintBtn').hidden = !running || mode === 'long' || mode === 'song';
   $('hintBtn').textContent = mode === 'match' ? '♪ もう一度聞く' : '♪ 答えの音を聞く';
   $('demoBtn').hidden = running;
   $('result').hidden = true;
@@ -1787,6 +2011,7 @@ const finishLong = () => {
 };
 const playDemo = () => {
   if (run) return;
+  if (mode === 'song') { playSongDemo(); return; }
   const st = stageOf();
   const spec = st && st.kind === 'phrase' ? st : LONG_STAGES[4];
   const t = phraseTonic(spec.deg, null);
@@ -1797,12 +2022,153 @@ const playDemo = () => {
   muteFor(t0 + spec.deg.length * beat);
 };
 
+// ---- 曲の道（フレーズごとに：お手本 → カウント → 歌う）----
+const startSong = () => {
+  const s = stageOf().song;
+  run = { kind: 'song', mode: 'song', stage: stageIdx, song: s, sh: songShift(s), i: 0, scores: [], cents: [], q: null, tol: S().tol };
+  setRunningUI(true);
+  beginSongPhrase();
+};
+const beginSongPhrase = () => {
+  if (!run) return;
+  const s = run.song;
+  const bars = songNotes(s, s.phrases[run.i]);
+  const flat = bars.flat();
+  const beatMs = 60000 / s.tempo;
+  const q = {
+    kind: 'phrase', bars, notes: flat.map((n) => (n.midi == null ? null : n.midi + run.sh.shift)), durMs: flat.map((n) => n.beats * beatMs),
+    status: [], cur: -1, frames: flat.map(() => []), finalized: flat.map(() => false), noteTimes: null, ends: null, done: false,
+  };
+  run.q = q;
+  setFeedback('');
+  $('count').innerHTML = `${run.i + 1}<small> / ${s.phrases.length}</small>`;
+  setProg(run.i / s.phrases.length);
+  showSheet(true);
+  renderSong(s, bars, run.sh);
+  $('prompt').innerHTML = `<small>フレーズ ${run.i + 1}：まずお手本を聞きます</small>`;
+  setCue('♪ 聞いてください', 'listen');
+  ensureAudio();
+  const beat = beatMs / 1000;
+  let t = actx.currentTime + 0.1;
+  flat.forEach((n, k) => {
+    if (q.notes[k] != null) tone(q.notes[k], t, n.beats * beat * 0.92);
+    t += n.beats * beat;
+  });
+  // カウント：1小節（2つしかないときは2小節）。弱起はその分だけ早く入る
+  const clickQ = s.click || 1;
+  const [num, den] = s.time.split('/').map(Number);
+  let clicks = Math.round((num * 4) / den / clickQ);
+  if (clicks < 3) clicks *= 2;
+  const countAt = t + beat * 0.6;
+  for (let k = 0; k < clicks; k++) click(countAt + k * clickQ * beat, k === 0);
+  const pick = s.pickup && s.phrases[run.i][0] === 0 ? flat.filter((n) => n.bar === 0).reduce((a, n) => a + n.beats, 0) : 0;
+  const notesAt = countAt + (clicks * clickQ - pick) * beat;
+  muteFor(countAt - 0.2);
+  const off = performance.now() - actx.currentTime * 1000;
+  q.countStart = off + countAt * 1000;
+  q.clicks = clicks;
+  q.clickMs = clickQ * beatMs;
+  let tt = off + notesAt * 1000;
+  q.noteTimes = [];
+  q.ends = [];
+  q.durMs.forEach((d) => { q.noteTimes.push(tt); tt += d; q.ends.push(tt); });
+};
+const songTick = (now, m) => {
+  const q = run.q;
+  if (!q || !q.noteTimes || q.done) return;
+  if (now < q.noteTimes[0]) {
+    if (now >= q.countStart) {
+      setCue('カウント', 'listen');
+      $('prompt').innerHTML = `<span class="big">${Math.min(q.clicks, Math.floor((now - q.countStart) / q.clickMs) + 1)}</span>`;
+    }
+    return;
+  }
+  let idx = Math.max(0, q.cur);
+  while (idx < q.notes.length && now >= q.ends[idx]) idx++;
+  if (q.cur === -1) { setCue('🎤 うたってください', 'sing'); $('prompt').innerHTML = ''; }
+  if (idx < q.notes.length && q.notes[idx] != null && m != null && now - q.noteTimes[idx] >= q.durMs[idx] * 0.3) q.frames[idx].push(centsOff(m, q.notes[idx]));
+  if (idx !== q.cur) {
+    for (let j = 0; j < Math.min(idx, q.notes.length); j++) if (!q.finalized[j]) finalizeSongNote(q, j);
+    q.cur = idx;
+    renderSong(run.song, q.bars, run.sh, { status: q.status, cur: idx < q.notes.length ? idx : -1 });
+    setProg((run.i + Math.min(1, idx / q.notes.length)) / run.song.phrases.length);
+  }
+  if (idx >= q.notes.length) evalSongPhrase();
+};
+// 休符は数えない。短い音（0.3秒未満。速い8分音符・16分音符）は声の高さが追いつかないので、合ったときだけ数える
+const SHORT_NOTE_MS = 300;
+const finalizeSongNote = (q, j) => {
+  q.finalized[j] = true;
+  if (q.notes[j] == null) { q.status[j] = 'rest'; return; }
+  const f = q.frames[j];
+  const short = q.durMs[j] < SHORT_NOTE_MS;
+  const med = f.length >= 3 ? median(f) : null;
+  const ok = med != null && Math.abs(med) <= Math.max(run.tol * 1.5, 35);
+  if (!ok && short) { q.status[j] = 'skip'; return; }
+  q.status[j] = ok ? 'ok' : 'miss';
+  if (med != null) run.cents.push(Math.abs(med));
+};
+const evalSongPhrase = () => {
+  const q = run.q;
+  q.done = true;
+  q.notes.forEach((_, j) => { if (!q.finalized[j]) finalizeSongNote(q, j); });
+  const counted = q.status.filter((s) => s === 'ok' || s === 'miss');
+  const hits = counted.filter((s) => s === 'ok').length;
+  const rate = counted.length ? hits / counted.length : 1;
+  run.scores.push(rate);
+  recordItem('song', `${run.song.id}:${run.i}`, rate >= 0.8, 0);
+  renderSong(run.song, q.bars, run.sh, { status: q.status });
+  popJudge(rate >= 0.8 ? 'Good!' : '✗', rate >= 0.8 ? 'perfect' : 'miss', `${hits} / ${counted.length}音`);
+  setFeedback(`${rate >= 0.8 ? '◎' : '✗'} 合った音 ${hits} / ${counted.length}`, rate >= 0.8 ? 'ok' : 'ng');
+  setCue('');
+  later(() => {
+    if (!run) return;
+    run.i++;
+    if (run.i >= run.song.phrases.length) finishSong();
+    else beginSongPhrase();
+  }, 1800);
+};
+const finishSong = () => {
+  const r = run;
+  stopRun(false);
+  const score = mean(r.scores);
+  const avgC = mean(r.cents);
+  const line1 = `合った音の割合 ${Math.round(score * 100)}%・平均のずれ ${Math.round(avgC)}セント`;
+  if (r.song.locked) {
+    showResult(null, line1, `無料版はここまで（全${r.song.fullPhrases}フレーズ中の1つ目）。続きは有料版で歌えます。`);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'gold';
+    b.textContent = '続きを歌う（有料版）';
+    b.addEventListener('click', () => openUpsell(`「${r.song.title}」の続きは有料版で歌えます。`));
+    $('result').querySelector('.controls').appendChild(b);
+    return;
+  }
+  const stars = score < 0.8 ? 0 : (score >= 0.97 && avgC <= r.tol / 3) ? 3 : (score >= 0.9 && avgC <= r.tol / 2) ? 2 : 1;
+  const isBest = saveBest(bestKey('song', r.stage), { stars, rate: score, cents: avgC });
+  showResult(stars, line1, stars ? (stars < 3 ? `★3は97%以上・平均のずれ${Math.round(r.tol / 3)}セント以内` : 'きれいに歌えています') : 'クリアには8割以上', isBest);
+};
+const playSongDemo = () => {
+  const s = stageOf().song;
+  const sh = songShift(s);
+  ensureAudio();
+  const beat = 60 / s.tempo;
+  let t = actx.currentTime + 0.08;
+  songNotes(s, s.phrases[0]).flat().forEach((n) => {
+    if (n.midi != null) tone(n.midi + sh.shift, t, n.beats * beat * 0.92);
+    t += n.beats * beat;
+  });
+  muteFor(t);
+};
+
 // ---- 開始・停止 ----
 const runTick = (now, m) => {
   if (run.kind === 'flash') flashTick(now, m);
+  else if (run.kind === 'song') songTick(now, m);
   else longTick(now, m);
 };
 const startRun = async () => {
+  if (isLocked(mode, stageIdx)) { openUpsell(`${MODE_INFO[mode].lane}のこのステージは有料版で練習できます。`); return; }
   ensureAudio();
   stopRun(false);
   $('result').hidden = true;
@@ -1814,6 +2180,7 @@ const startRun = async () => {
   }
   $('micWarn').hidden = true;
   if (mode === 'long') startLong();
+  else if (mode === 'song') startSong();
   else startFlash();
 };
 const stopRun = (showIdle = true) => {
@@ -1859,6 +2226,11 @@ const goView = (v) => {
   window.scrollTo(0, 0);
 };
 const openPlay = (m, i) => {
+  if (m === 'song' && !STAGES.song[i]) { m = 'match'; i = 0; }
+  if (isLocked(m, i)) {
+    openUpsell(i === FREE ? `${MODE_INFO[m].name}の自由練習は有料版で練習できます。` : `${MODE_INFO[m].lane}のステージ${i + 1}「${STAGES[m][i].short}」は有料版で練習できます。`);
+    return;
+  }
   stopRun(false);
   mode = m;
   stageIdx = i;
@@ -1879,7 +2251,7 @@ document.addEventListener('click', (e) => {
     e.preventDefault();
     goView(t.dataset.gotoView);
   } else if (t.dataset.tab) {
-    if (t.dataset.tab === 'play') openPlay(MODES.includes(store.last.mode) ? store.last.mode : 'match', store.last.stage ?? 0);
+    if (t.dataset.tab === 'play') openPlay(MODES.includes(store.last.mode) || store.last.mode === 'song' ? store.last.mode : 'match', store.last.stage ?? 0);
     else goView(t.dataset.tab);
   } else if (t.hasAttribute('data-close')) {
     t.closest('dialog').close();
@@ -2037,6 +2409,7 @@ bindSettings();
 goView('home');
 window.addEventListener('resize', () => { if (view === 'play') drawTrail(performance.now()); });
 if (!S().onboarded) { renderVoices(); $('obDlg').showModal(); }
+initBilling();
 </script>
 </body>
 </html>
