@@ -1505,7 +1505,7 @@ const songLane = () => {
   return `<div class="card lane">${laneHead('song', `<span class="cnt">★ ${got}/${list.length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
 };
 // キャラクター（img/chara/*.svg、design/gen_chara.py で描く）
-const charaImg = (name, cls) => `<img class="chara ${cls}" src="/img/chara/${name}.svg?v=1" alt="" width="60" height="54">`;
+const charaImg = (name, cls) => `<img class="chara ${cls}" src="/img/chara/${name}.svg?v=2" alt="" width="60" height="54">`;
 const renderHome = () => {
   const isSong = store.last.mode === 'song' && !!STAGES.song[store.last.stage];
   const lm = isSong || MODES.includes(store.last.mode) ? store.last.mode : 'match';
