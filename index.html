@@ -763,7 +763,7 @@ body[data-mode="song"] #score svg { max-width: none; }
 
 <script src="songs.js?v=1"></script>
 <script src="record-sync.js?v=1"></script>
-<script src="billing.js?v=1"></script>
+<script src="billing.js?v=2"></script>
 <script>
 'use strict';
 const VF = Vex.Flow;
@@ -1549,6 +1549,7 @@ const renderHome = () => {
   $('premiumBanner').hidden = !(BILLING_ON && !account.paid);
   $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile${isLocked(m, FREE) ? ' locked' : ''}" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
     + '<button type="button" class="tile" data-range><span class="ic" style="background:#fbe5ef">🎤</span><span><b>声域を測る</b><small>いちばん低い声と高い声を歌って、練習の音域を決める</small></span></button>'
+    + `<a class="tile${BILLING_ON && !account.paid ? ' locked' : ''}" href="/analyzer/" style="text-decoration:none;color:inherit"><span class="ic" style="background:#e8eef6">📈</span><span><b>声の分析</b><small>波形・倍音・ビブラートを見て、理想のアーティストの声と比べる</small></span></a>`
     + '<button type="button" class="tile" data-open="helpDlg"><span class="ic" style="background:#e8eef6">📖</span><span><b>音程と楽譜の見方</b><small>音程の名前・ト音記号とヘ音記号・セント</small></span></button>';
 };
 const renderStageInfo = () => {

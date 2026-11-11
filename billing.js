@@ -276,6 +276,22 @@ const handleCheckoutReturn = async () => {
   }
 };
 
+// 声の分析のページ（/analyzer/）から「有料版にする」「ログイン」で来たとき
+const handleRequestFromAnalyzer = async () => {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('buy') && !q.has('login')) return;
+  history.replaceState(null, '', location.pathname);
+  const back = q.get('back') === 'analyzer' ? '/analyzer/' : '';
+  if (q.has('buy')) {
+    if (account.paid) { if (back) location.href = back; return; }
+    await buyPlan();
+    return;
+  }
+  if (account.signedIn) { if (back) location.href = back; return; }
+  afterSignIn = back ? async () => { location.href = back; } : null;
+  openAcct('login');
+};
+
 const initBilling = () => {
   if (!BILLING_ON) return;
   $('planBtns').addEventListener('click', (e) => {
@@ -293,5 +309,6 @@ const initBilling = () => {
   $('upsellBuy').addEventListener('click', () => { $('upsellDlg').close(); buyPlan(); });
   refreshAccount()
     .then(handleCheckoutReturn)
+    .then(handleRequestFromAnalyzer)
     .catch((e) => console.warn('有料版の状態を確かめられませんでした', e));
 };

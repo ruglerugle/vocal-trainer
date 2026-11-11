@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>声の分析｜ヴォーカルトレーナー</title>
+<meta name="description" content="マイクの声をその場で分析（波形・倍音・スペクトログラム・音の高さ・ビブラート）し、理想のアーティストの声と比べられます。音声はこの端末の中だけで処理します。">
+<link rel="canonical" href="https://vocal-trainer.habatakijuku.com/analyzer/">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23c2367a'/%3E%3Crect x='15' y='7' width='10' height='17' rx='5' fill='%23fff'/%3E%3Cpath d='M11 19a9 9 0 0 0 18 0M20 28v5M15 33h10' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fbf2f6; --paper: #fff; --ink: #2d1622; --muted: #7a5d6b; --line: #f0dce6;
+  --accent: #c2367a; --accent-dark: #93205a; --accent-soft: #fbe5ef; --accent-bright: #ff7ab8;
+  --gold: #ffb020; --gold-dark: #d98e00; --ok: #16a34a; --ng: #e5484d;
+  --panel: #1b0d15; --panel2: #2b1521; --pink: #ff7ab8; --cyan: #5ad1e6; --p-ink: #fff1f7; --p-muted: #c5a2b4;
+  --shadow: 0 1px 2px rgba(45, 22, 34, .06), 0 8px 24px rgba(45, 22, 34, .07);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; font-size: 16px; line-height: 1.65; overflow-x: hidden; }
+a { color: var(--accent); }
+[hidden] { display: none !important; }
+button { font: inherit; font-weight: 700; cursor: pointer; border: 0; color: #fff; background: var(--accent); border-radius: 14px; padding: 9px 18px; box-shadow: 0 4px 0 var(--accent-dark); transition: transform .06s, box-shadow .06s; }
+button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent-dark); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.ghost { background: var(--paper); color: var(--accent); box-shadow: 0 0 0 2px var(--line) inset, 0 3px 0 var(--line); }
+button.gold { background: var(--gold); color: #3a2600; box-shadow: 0 4px 0 var(--gold-dark); }
+button.rec { background: var(--ng); box-shadow: 0 4px 0 #a62d31; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+select, input[type="number"], input[type="text"] { font: inherit; padding: 7px 10px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
+input[type="range"] { accent-color: var(--accent); }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(251, 242, 246, .92); backdrop-filter: blur(10px); }
+.topbar a.back { text-decoration: none; font-weight: 700; }
+.topbar h1 { margin: 0; font-size: 1.1rem; flex: 1; }
+.page { max-width: 1100px; margin: 0 auto; padding: 8px 16px 40px; }
+.lead { color: var(--muted); margin: 4px 0 16px; }
+.card { background: var(--paper); border-radius: 20px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 16px; }
+.card h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.card > p { margin: 0 0 10px; font-size: .9rem; color: var(--muted); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.note { font-size: .82rem; color: var(--muted); margin: 6px 0 0; }
+.warn { background: #fff7e0; border-radius: 12px; padding: 8px 12px; font-size: .86rem; }
+/* 黒い計器の面 */
+.dark { background: var(--panel); color: var(--p-ink); border-radius: 18px; padding: 12px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.viz { background: var(--panel2); border-radius: 14px; padding: 8px 10px 10px; min-width: 0; }
+.viz h3 { margin: 0 0 4px; font-size: .9rem; display: flex; gap: 8px; align-items: baseline; }
+.viz h3 small { font-weight: 500; color: var(--p-muted); font-size: .76rem; }
+.viz canvas { width: 100%; height: 170px; display: block; border-radius: 8px; background: #12070d; }
+.viz.tall canvas { height: 220px; }
+.metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.m { background: var(--panel2); border-radius: 12px; padding: 8px 10px; }
+.m b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.m span { font-size: .78rem; color: var(--p-muted); display: block; }
+.m small { font-size: .72rem; color: var(--p-muted); }
+.live-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.live-bar .st { font-size: .85rem; color: var(--p-muted); }
+.clips { display: grid; gap: 6px; margin-top: 8px; }
+.clip { display: flex; gap: 8px; align-items: center; background: var(--bg); border-radius: 12px; padding: 6px 10px; font-size: .9rem; }
+.clip.on { box-shadow: 0 0 0 2px var(--accent) inset; }
+.clip .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clip button { padding: 4px 10px; font-size: .82rem; border-radius: 10px; box-shadow: none; }
+.overview { width: 100%; height: 90px; display: block; border-radius: 10px; background: #12070d; cursor: crosshair; touch-action: none; }
+.sel-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: .9rem; }
+.sel-row input[type="number"] { width: 90px; }
+.tbl-wrap { overflow-x: auto; margin-top: 12px; }
+@media (max-width: 560px) { table.cmp td.num { white-space: normal; } table.cmp { font-size: .84rem; } }
+table.cmp { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.cmp td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.cmp .me { color: var(--accent); font-weight: 700; }
+table.cmp .ar { color: #0f7f93; font-weight: 700; }
+.legend { display: flex; gap: 14px; font-size: .82rem; color: var(--p-muted); margin-top: 6px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.bands { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+@media (max-width: 560px) { .bands { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.band { background: var(--panel2); border-radius: 12px; padding: 8px 10px; font-size: .82rem; color: var(--p-muted); }
+.band b { display: block; color: var(--p-ink); font-size: 1rem; }
+.gate { text-align: center; padding: 28px 16px; }
+.gate h2 { font-size: 1.3rem; }
+.gate ul { text-align: left; display: inline-block; margin: 8px 0 16px; }
+.busy { font-size: .9rem; color: var(--muted); }
+footer { text-align: center; font-size: .8rem; color: var(--muted); padding: 10px 16px 40px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="/">← ヴォーカルトレーナー</a>
+  <h1>声の分析</h1>
+</header>
+
+<main class="page">
+  <p class="lead">マイクの声をその場で分析し、理想のアーティストの声と比べます。音声はこの端末の中だけで処理し、どこにも送りません。</p>
+
+  <!-- 有料版の案内（有料版でないとき） -->
+  <section id="gate" class="card gate" hidden>
+    <h2>🔒 声の分析は有料版の機能です</h2>
+    <p id="gateMsg">有料版（月480円）にすると使えます。</p>
+    <ul>
+      <li>マイクの声をその場で：波形・倍音の並び・スペクトログラム・音の高さ・ビブラート</li>
+      <li>アーティストの声と：声の色（倍音の多い少ない）・フレーズの歌い方・数値を並べて比較</li>
+      <li>ほかに、音程・五線譜・ロングトーンのすべてのステージと、曲の道のすべての曲</li>
+    </ul>
+    <div class="row" style="justify-content:center">
+      <button type="button" class="gold" id="gateBuy">有料版にする（月480円）</button>
+      <button type="button" class="ghost" id="gateLogin">ログイン</button>
+    </div>
+  </section>
+
+  <div id="tools" hidden>
+    <!-- ① その場の分析 -->
+    <section class="card">
+      <h2>① 自分の声をその場で見る</h2>
+      <p>「あー」と伸ばしたり、歌ったりしてみてください。ヘッドホンを使うと、ほかの音を拾いにくくなります。</p>
+      <div class="dark">
+        <div class="live-bar">
+          <button type="button" id="micBtn">🎤 マイクをオンにする</button>
+          <button type="button" class="ghost" id="freezeBtn" disabled>⏸ 止めて見る</button>
+          <span class="st" id="micSt">マイクはオフです</span>
+        </div>
+        <div class="grid2">
+          <div class="viz"><h3>波形 <small>声の揺れそのもの。ギザギザが細かいほど倍音や息が多い</small></h3><canvas id="cvWave"></canvas></div>
+          <div class="viz"><h3>倍音の並び（スペクトル） <small>山が倍音。高い側の山が強いほど明るい声</small></h3><canvas id="cvSpec"></canvas></div>
+          <div class="viz"><h3>スペクトログラム <small>横が時間、縦が高さ。明るい線が倍音</small></h3><canvas id="cvGram"></canvas></div>
+          <div class="viz"><h3>音の高さ <small>直近8秒。波打っていればビブラート</small></h3><canvas id="cvPitch"></canvas></div>
+        </div>
+        <div class="metrics">
+          <div class="m"><span>音の高さ</span><b id="mPitch">—</b><small id="mPitchSub">&nbsp;</small></div>
+          <div class="m"><span>明るさ</span><b id="mCent">—</b><small>倍音の重心（Hz）</small></div>
+          <div class="m"><span>響き</span><b id="mRing">—</b><small>2〜4kHz の強さ（dB）</small></div>
+          <div class="m"><span>倍音のきれいさ</span><b id="mHnr">—</b><small>低いほど息っぽい（dB）</small></div>
+          <div class="m"><span>声の大きさ</span><b id="mLoud">—</b><small>dB（0が最大）</small></div>
+          <div class="m"><span>ビブラート</span><b id="mVib">—</b><small id="mVibSub">伸ばした音で測ります</small></div>
+        </div>
+      </div>
+      <p class="note">「響き」は、歌声が伴奏に負けずに通る成分（歌い手のフォルマント）の目安です。「倍音のきれいさ」は、声のうち規則正しい振動と雑音の比で、息が多いと下がります。</p>
+    </section>
+
+    <!-- ② 比べる -->
+    <section class="card">
+      <h2>② アーティストの声と比べる</h2>
+      <p>同じフレーズを、アーティストの音源と自分の録音で比べます。</p>
+      <p class="warn">伴奏が入った曲のままだと、楽器の音も一緒に分析されて正しく比べられません。<b>ボーカルだけの音源</b>（アカペラや、ボーカルを抜き出したもの）を使ってください。</p>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <h3 style="margin:0 0 6px;font-size:1rem">🎧 アーティストの音源</h3>
+          <div class="row">
+            <label class="ghost" style="display:inline-block"><input type="file" id="artistFile" accept="audio/*" hidden><span class="pick" role="button" tabindex="0" id="artistPick">音源ファイルを読み込む</span></label>
+          </div>
+          <div id="artistList" class="clips"></div>
+        </div>
+        <div>
+          <h3 style="margin:0 0 6px;font-size:1rem">🎤 自分の声</h3>
+          <div class="row">
+            <button type="button" class="rec" id="recBtn">● 録音する</button>
+            <label><input type="file" id="meFile" accept="audio/*" hidden><span class="pick" role="button" tabindex="0" id="mePick">ファイルから</span></label>
+            <span class="busy" id="recSt"></span>
+          </div>
+          <div id="meList" class="clips"></div>
+        </div>
+      </div>
+
+      <div id="selBox" hidden style="margin-top:14px">
+        <h3 style="margin:0 0 6px;font-size:1rem">比べる区間 <small id="selName" style="color:var(--muted);font-weight:500"></small></h3>
+        <canvas id="cvOver" class="overview"></canvas>
+        <div class="sel-row">
+          <span>はじめ</span><input type="number" id="selStart" min="0" step="0.1" value="0"> 秒
+          <span>長さ</span><input type="number" id="selLen" min="1" max="30" step="0.5" value="10"> 秒
+          <button type="button" class="ghost" id="selPlay">▶ 区間を聞く</button>
+          <span class="busy">図をドラッグしても選べます（30秒まで）</span>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <button type="button" class="gold" id="cmpBtn" disabled>比べる</button>
+        <span class="busy" id="cmpSt">アーティストの音源と、自分の声を1つずつ選んでください。</span>
+      </div>
+
+      <div id="result" hidden style="margin-top:14px">
+        <div class="dark">
+          <div class="viz tall"><h3>声の色（平均の倍音の並び） <small>どの高さの成分が多いか。形が似ているほど声の色が近い</small></h3><canvas id="cvLtas"></canvas>
+            <div class="legend"><span><i style="background:var(--pink)"></i>自分</span><span><i style="background:var(--cyan)"></i>アーティスト</span></div>
+          </div>
+          <div class="bands" id="bands"></div>
+          <div class="viz tall" style="margin-top:12px"><h3>フレーズの歌い方（音の高さ） <small>しゃくり・ビブラート・音の入り方の違い</small></h3><canvas id="cvCmpPitch"></canvas>
+            <div class="legend"><span><i style="background:var(--pink)"></i>自分</span><span><i style="background:var(--cyan)"></i>アーティスト</span></div>
+            <div class="sel-row" style="color:var(--p-ink)">
+              <span>高さ</span>
+              <select id="alignSel">
+                <option value="octave">オクターブをそろえる</option>
+                <option value="none">そのまま</option>
+                <option value="median">高さをすべてそろえる</option>
+              </select>
+              <span>自分をずらす</span><input type="range" id="offsetIn" min="-2000" max="2000" step="20" value="0"><span id="offsetSt">0.00 秒</span>
+              <button type="button" class="ghost" id="playMe">▶ 自分</button>
+              <button type="button" class="ghost" id="playAr">▶ アーティスト</button>
+            </div>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table class="cmp">
+          <thead><tr><th>項目</th><th class="me">自分</th><th class="ar">アーティスト</th><th>見方</th></tr></thead>
+          <tbody id="cmpRows"></tbody>
+        </table></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>音声はこの端末の中だけで処理し、録音と読み込んだ音源もこの端末のブラウザの中だけに保存します。<br><a href="/">ヴォーカルトレーナーへ戻る</a>・<a href="https://habatakijuku.com/">羽ばたき塾</a></footer>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const NAMES = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
+const noteName = (m) => { const r = Math.round(m); return `${NAMES[((r % 12) + 12) % 12]}${Math.floor(r / 12) - 1}`; };
+const hzToMidi = (f) => 69 + 12 * Math.log2(f / 440);
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const median = (a) => { if (!a.length) return NaN; const b = [...a].sort((x, y) => x - y); const n = b.length; return n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2; };
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const db = (p) => 10 * Math.log10(Math.max(p, 1e-12));
+
+// ================= 信号処理（その場の分析と、ファイルの分析で共通） =================
+const FMIN = 70;
+const FMAX = 1100;
+const GATE_DB = -50; // これより小さい音は声とみなさない
+// 2つずつ平均して標本化の速さを半分にする（音の高さを測るのを軽くする）
+const halve = (x) => { const y = new Float32Array(x.length >> 1); for (let i = 0; i < y.length; i++) y[i] = (x[2 * i] + x[2 * i + 1]) / 2; return y; };
+// YIN 法：基本周波数と、周期性の弱さ（0=きれいな周期、1=雑音）
+const yin = (x, sr) => {
+  const W = x.length >> 1;
+  const tMin = Math.floor(sr / FMAX);
+  const tMax = Math.min(W - 1, Math.ceil(sr / FMIN));
+  const d = new Float32Array(tMax + 2);
+  for (let t = 1; t <= tMax + 1; t++) {
+    let s = 0;
+    for (let i = 0; i < W; i++) { const v = x[i] - x[i + t]; s += v * v; }
+    d[t] = s;
+  }
+  let run = 0;
+  const cm = new Float32Array(tMax + 2);
+  cm[0] = 1;
+  for (let t = 1; t <= tMax + 1; t++) { run += d[t]; cm[t] = run ? (d[t] * t) / run : 1; }
+  let tau = -1;
+  for (let t = tMin; t <= tMax; t++) {
+    if (cm[t] < 0.15) { while (t + 1 <= tMax && cm[t + 1] < cm[t]) t++; tau = t; break; }
+  }
+  if (tau < 0) {
+    let best = tMin;
+    for (let t = tMin; t <= tMax; t++) if (cm[t] < cm[best]) best = t;
+    if (cm[best] > 0.35) return { f0: 0, aper: Math.min(1, cm[best]) };
+    tau = best;
+  }
+  const a = cm[tau - 1] ?? cm[tau];
+  const c = cm[tau + 1] ?? cm[tau];
+  const den = a - 2 * cm[tau] + c;
+  const shift = den ? clamp((a - c) / (2 * den), -1, 1) : 0;
+  return { f0: sr / (tau + shift), aper: clamp(cm[tau], 1e-4, 1) };
+};
+const hnrOf = (aper) => clamp(10 * Math.log10((1 - aper) / aper), -5, 40);
+const rmsDb = (x) => { let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * x[i]; return db(s / x.length); };
+
+// 高速フーリエ変換（長さは2のべき）
+const fft = (re, im) => {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = (-2 * Math.PI) / len;
+    const wr = Math.cos(ang);
+    const wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1;
+      let ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ar = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci;
+        const ai = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k + len / 2] = re[i + k] - ar; im[i + k + len / 2] = im[i + k] - ai;
+        re[i + k] += ar; im[i + k] += ai;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+};
+const hannCache = new Map();
+const hann = (n) => { if (!hannCache.has(n)) hannCache.set(n, Float32Array.from({ length: n }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)))); return hannCache.get(n); };
+const powerSpectrum = (x) => {
+  const n = x.length;
+  const w = hann(n);
+  const re = new Float32Array(n);
+  const im = new Float32Array(n);
+  for (let i = 0; i < n; i++) re[i] = x[i] * w[i];
+  fft(re, im);
+  const p = new Float32Array(n / 2);
+  for (let i = 0; i < n / 2; i++) p[i] = (re[i] * re[i] + im[i] * im[i]) / n;
+  return p;
+};
+// 倍音の並びから：明るさ（重心）と響き（2〜4kHz と 80Hz〜2kHz の比）
+const bandSum = (p, binHz, lo, hi) => { let s = 0; for (let i = Math.max(1, Math.floor(lo / binHz)); i <= Math.min(p.length - 1, Math.ceil(hi / binHz)); i++) s += p[i]; return s; };
+const spectralMetrics = (p, binHz) => {
+  let s = 0;
+  let sw = 0;
+  for (let i = Math.floor(80 / binHz); i <= Math.min(p.length - 1, Math.ceil(8000 / binHz)); i++) { s += p[i]; sw += p[i] * i * binHz; }
+  return { centroid: s ? sw / s : 0, ring: db(bandSum(p, binHz, 2000, 4000)) - db(bandSum(p, binHz, 80, 2000)) };
+};
+// ビブラート：伸ばした音（窓の中で高さのゆっくりした動きが1半音以内）の、揺れの速さ（Hz）と深さ（±セント）
+const vibratoOf = (ts, ms) => {
+  if (ms.length < 20) return null;
+  const dur = ts[ts.length - 1] - ts[0];
+  if (dur < 0.8) return null;
+  const c = ms.map((m) => m * 100);
+  // 0.25秒の移動平均で「ゆっくりした動き」を取り、残りを揺れとみなす
+  const trend = c.map((_, i) => { const t0 = ts[i]; const w = []; for (let j = 0; j < c.length; j++) if (Math.abs(ts[j] - t0) <= 0.125) w.push(c[j]); return mean(w); });
+  if (Math.max(...trend) - Math.min(...trend) > 100) return null;
+  const r = c.map((v, i) => v - trend[i]);
+  let z = 0;
+  for (let i = 1; i < r.length; i++) if ((r[i - 1] < 0) !== (r[i] < 0)) z++;
+  const rate = z / 2 / dur;
+  const depth = Math.sqrt(2) * Math.sqrt(mean(r.map((v) => v * v)));
+  if (rate < 3 || rate > 9 || depth < 12) return { rate: 0, depth: 0, none: true };
+  return { rate, depth };
+};
+
+// ================= ファイル・録音の分析 =================
+const HOP_S = 0.023;
+const analyzeSamples = async (x, sr, onProgress) => {
+  const N = sr > 32000 ? 4096 : 2048;
+  const hop = Math.round(HOP_S * sr);
+  const half = sr > 32000;
+  const ts = [];
+  const f0 = [];
+  const out = { ts, f0, hnr: [], cent: [], ring: [], loud: [] };
+  const ltas = new Float64Array(N / 2);
+  let voicedN = 0;
+  const binHz = sr / N;
+  for (let s = 0, k = 0; s + N <= x.length; s += hop, k++) {
+    const frame = x.subarray(s, s + N);
+    const l = rmsDb(frame);
+    const t = (s + N / 2) / sr;
+    let pitch = null;
+    let h = null;
+    if (l > GATE_DB) {
+      const y = half ? halve(frame) : frame;
+      const r = yin(y, half ? sr / 2 : sr);
+      if (r.f0) { pitch = hzToMidi(r.f0); h = hnrOf(r.aper); }
+    }
+    ts.push(t); f0.push(pitch); out.hnr.push(h); out.loud.push(l);
+    if (pitch != null) {
+      const p = powerSpectrum(frame);
+      const m = spectralMetrics(p, binHz);
+      out.cent.push(m.centroid); out.ring.push(m.ring);
+      for (let i = 0; i < p.length; i++) ltas[i] += p[i];
+      voicedN++;
+    }
+    if (k % 40 === 0) { onProgress?.(s / x.length); await new Promise((r) => setTimeout(r)); }
+  }
+  for (let i = 0; i < ltas.length; i++) ltas[i] /= Math.max(1, voicedN);
+  // ビブラート：1.2秒の窓を0.3秒ずつずらし、伸ばした音の窓だけで測る
+  const vib = [];
+  let sustained = 0;
+  const step = Math.round(0.3 / HOP_S);
+  const win = Math.round(1.2 / HOP_S);
+  for (let i = 0; i + win <= f0.length; i += step) {
+    const seg = f0.slice(i, i + win);
+    if (seg.some((v) => v == null)) continue;
+    const v = vibratoOf(ts.slice(i, i + win), seg);
+    if (!v) continue;
+    sustained++;
+    if (!v.none) vib.push(v);
+  }
+  const voiced = f0.filter((v) => v != null);
+  return {
+    ...out, ltas, binHz, voicedRatio: voiced.length / Math.max(1, f0.length),
+    summary: {
+      median: median(voiced),
+      low: voiced.length ? [...voiced].sort((a, b) => a - b)[Math.floor(voiced.length * 0.05)] : NaN,
+      high: voiced.length ? [...voiced].sort((a, b) => a - b)[Math.floor(voiced.length * 0.95)] : NaN,
+      centroid: median(out.cent),
+      ring: median(out.ring),
+      hnr: median(out.hnr.filter((v) => v != null)),
+      loud: median(out.loud.filter((_, i) => f0[i] != null)),
+      vibRate: vib.length ? mean(vib.map((v) => v.rate)) : NaN,
+      vibDepth: vib.length ? mean(vib.map((v) => v.depth)) : NaN,
+      vibShare: sustained ? vib.length / sustained : NaN,
+    },
+  };
+};
+
+// ================= 音声 =================
+let actx = null;
+const audio = () => { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; };
+const toMono = (buf) => {
+  const n = buf.length;
+  const out = new Float32Array(n);
+  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) out[i] += d[i] / buf.numberOfChannels; }
+  return out;
+};
+let playing = null;
+const playSamples = (x, sr) => {
+  const ctx = audio();
+  if (playing) { try { playing.stop(); } catch (e) { console.warn(e); } playing = null; }
+  const b = ctx.createBuffer(1, x.length, sr);
+  b.copyToChannel(x, 0);
+  const src = ctx.createBufferSource();
+  src.buffer = b;
+  src.connect(ctx.destination);
+  src.start();
+  playing = src;
+};
+
+// ================= 描画の道具 =================
+const fitCanvas = (cv) => {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth;
+  const h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { g, w, h };
+};
+const F_LO = 60;
+const F_HI = 8000;
+const xOfHz = (f, w) => (Math.log(f / F_LO) / Math.log(F_HI / F_LO)) * w;
+const gridFreq = (g, w, h) => {
+  g.font = '10px sans-serif';
+  g.fillStyle = 'rgba(255,241,247,.45)';
+  g.strokeStyle = 'rgba(255,255,255,.08)';
+  [100, 200, 500, 1000, 2000, 4000].forEach((f) => {
+    const x = xOfHz(f, w);
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+    g.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x + 2, h - 3);
+  });
+};
+const PINK = '#ff7ab8';
+const CYAN = '#5ad1e6';
+
+// ================= ① その場の分析 =================
+const live = { on: false, frozen: false, stream: null, an: null, td: null, fd: null, hist: [], ema: {}, raf: 0, lastT: 0 };
+const startMic = async () => {
+  if (live.on) return true;
+  if (!navigator.mediaDevices?.getUserMedia) { $('micSt').textContent = 'このブラウザではマイクを使えません。'; return false; }
+  try {
+    live.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  } catch (e) {
+    console.warn('マイクを使えませんでした', e);
+    $('micSt').textContent = e && e.name === 'NotAllowedError' ? 'マイクが許可されていません。アドレスバーの鍵のマークから許可してください。' : 'マイクを使えませんでした。';
+    return false;
+  }
+  const ctx = audio();
+  live.an = ctx.createAnalyser();
+  live.an.fftSize = 4096;
+  live.an.smoothingTimeConstant = 0;
+  ctx.createMediaStreamSource(live.stream).connect(live.an);
+  live.td = new Float32Array(live.an.fftSize);
+  live.fd = new Float32Array(live.an.frequencyBinCount);
+  live.on = true;
+  $('micBtn').textContent = '🎤 マイク オン';
+  $('micBtn').disabled = true;
+  $('freezeBtn').disabled = false;
+  $('micSt').textContent = '声を待っています';
+  live.raf = requestAnimationFrame(liveTick);
+  return true;
+};
+const setM = (id, v) => { const el = $(id); if (el.textContent !== v) el.textContent = v; };
+const smooth = (k, v, a = 0.25) => { if (v == null || !Number.isFinite(v)) return live.ema[k]; live.ema[k] = live.ema[k] == null ? v : live.ema[k] + a * (v - live.ema[k]); return live.ema[k]; };
+const liveTick = () => {
+  live.raf = requestAnimationFrame(liveTick);
+  if (live.frozen) return;
+  const now = performance.now() / 1000;
+  const sr = actx.sampleRate;
+  live.an.getFloatTimeDomainData(live.td);
+  live.an.getFloatFrequencyData(live.fd);
+  const l = rmsDb(live.td);
+  let pitch = null;
+  let h = null;
+  if (l > GATE_DB) {
+    const r = yin(halve(live.td), sr / 2);
+    if (r.f0) { pitch = hzToMidi(r.f0); h = hnrOf(r.aper); }
+  }
+  live.hist.push({ t: now, m: pitch });
+  while (live.hist.length && live.hist[0].t < now - 8) live.hist.shift();
+  const binHz = sr / live.an.fftSize;
+  const p = Float32Array.from(live.fd, (d) => 10 ** (d / 10));
+  drawWave(live.td);
+  drawSpec([{ p, binHz, color: PINK }], $('cvSpec'), true);
+  drawGram(p, binHz);
+  drawPitchLive();
+  // 数値
+  setM('mLoud', l > -100 ? `${Math.round(l)}` : '—');
+  if (pitch != null) {
+    const m = spectralMetrics(p, binHz);
+    setM('mPitch', noteName(pitch));
+    const c = Math.round((pitch - Math.round(pitch)) * 100);
+    setM('mPitchSub', `${c >= 0 ? '+' : '−'}${Math.abs(c)}セント・${Math.round(440 * 2 ** ((pitch - 69) / 12))}Hz`);
+    setM('mCent', `${Math.round(smooth('cent', m.centroid))}`);
+    setM('mRing', `${smooth('ring', m.ring).toFixed(1)}`);
+    setM('mHnr', `${smooth('hnr', h).toFixed(1)}`);
+    $('micSt').textContent = '分析しています';
+  } else {
+    setM('mPitch', '—');
+    setM('mPitchSub', ' ');
+  }
+  if (now - live.lastT > 0.25) {
+    live.lastT = now;
+    const seg = live.hist.filter((x) => x.t > now - 1.5);
+    const v = seg.length > 20 && seg.every((x) => x.m != null) ? vibratoOf(seg.map((x) => x.t), seg.map((x) => x.m)) : null;
+    if (v && !v.none) { setM('mVib', `${v.rate.toFixed(1)}Hz`); setM('mVibSub', `深さ ±${Math.round(v.depth)}セント`); }
+    else if (v) { setM('mVib', 'なし'); setM('mVibSub', 'まっすぐな声'); }
+    else { setM('mVib', '—'); setM('mVibSub', '伸ばした音で測ります'); }
+  }
+};
+const drawWave = (x) => {
+  const { g, w, h } = fitCanvas($('cvWave'));
+  g.clearRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(255,255,255,.12)';
+  g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+  // 上向きにゼロを横切るところから描くと、波形が止まって見える
+  let s = 0;
+  for (let i = 1; i < x.length / 2; i++) if (x[i - 1] < 0 && x[i] >= 0) { s = i; break; }
+  const n = Math.min(1200, x.length - s);
+  let peak = 0.05;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(x[s + i]));
+  g.strokeStyle = PINK;
+  g.lineWidth = 1.6;
+  g.beginPath();
+  for (let i = 0; i < n; i++) { const px = (i / n) * w; const py = h / 2 - (x[s + i] / peak) * (h / 2 - 6); if (i) g.lineTo(px, py); else g.moveTo(px, py); }
+  g.stroke();
+  g.fillStyle = 'rgba(255,241,247,.45)';
+  g.font = '10px sans-serif';
+  g.fillText(`${Math.round((n / actx.sampleRate) * 1000)}ミリ秒分（大きさは自動で合わせる）`, 6, 12);
+};
+// curves: [{ p: 強さ（パワー）, binHz, color }]、norm: それぞれ最大を0dBに
+const drawSpec = (curves, cv, live = false, range = 70) => {
+  const { g, w, h } = fitCanvas(cv);
+  g.clearRect(0, 0, w, h);
+  gridFreq(g, w, h);
+  curves.forEach(({ p, binHz, color, fill }) => {
+    let mx = -Infinity;
+    for (let i = 1; i < p.length; i++) if (i * binHz >= F_LO && i * binHz <= F_HI) mx = Math.max(mx, p[i]);
+    const top = db(mx);
+    g.strokeStyle = color;
+    g.lineWidth = live ? 1.3 : 2;
+    g.beginPath();
+    let first = true;
+    const pts = [];
+    for (let i = 1; i < p.length; i++) {
+      const f = i * binHz;
+      if (f < F_LO || f > F_HI) continue;
+      const y = clamp(((top - db(p[i])) / range) * h, 0, h);
+      const x = xOfHz(f, w);
+      pts.push([x, y]);
+      if (first) { g.moveTo(x, y); first = false; } else g.lineTo(x, y);
+    }
+    g.stroke();
+    if (fill && pts.length) {
+      g.lineTo(pts[pts.length - 1][0], h); g.lineTo(pts[0][0], h); g.closePath();
+      g.fillStyle = fill; g.fill();
+    }
+  });
+};
+const gramColor = (v) => { // 0..1 → 黒→紫→ピンク→黄
+  const r = clamp(v * 3, 0, 1) * 255;
+  const gg = clamp(v * 3 - 1.6, 0, 1) * 230;
+  const b = clamp(v < 0.5 ? v * 2 : 2 - v * 2.2, 0.15, 1) * 200;
+  return [r, gg, b];
+};
+let gramImg = null;
+const drawGram = (p, binHz) => {
+  const cv = $('cvGram');
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.round(cv.clientWidth * dpr);
+  const H = Math.round(cv.clientHeight * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; gramImg = null; }
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const cw = Math.max(1, Math.round(2 * dpr));
+  g.drawImage(cv, -cw, 0);
+  if (!gramImg || gramImg.height !== H) gramImg = g.createImageData(cw, H);
+  const d = gramImg.data;
+  let mx = 1e-12;
+  for (let i = 1; i < p.length; i++) mx = Math.max(mx, p[i]);
+  for (let y = 0; y < H; y++) {
+    // 下が低い音。縦は対数（60Hz〜8kHz）
+    const f = F_LO * (F_HI / F_LO) ** (1 - y / H);
+    const v = clamp((db(p[Math.round(f / binHz)] ?? 0) - db(mx) + 70) / 70, 0, 1);
+    const [r, gg, b] = gramColor(v);
+    for (let x = 0; x < cw; x++) { const o = (y * cw + x) * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255; }
+  }
+  g.putImageData(gramImg, W - cw, 0);
+};
+// 音の高さの線（ts: 秒、ms: MIDI か null）
+const drawPitchLines = (cv, lines, { span = null, lo = null, hi = null } = {}) => {
+  const { g, w, h } = fitCanvas(cv);
+  g.clearRect(0, 0, w, h);
+  const all = lines.flatMap((l) => l.ms.filter((m) => m != null).map((m) => m + (l.shift ?? 0)));
+  const t0 = span ? span[0] : Math.min(...lines.map((l) => l.ts[0] ?? 0));
+  const t1 = span ? span[1] : Math.max(...lines.map((l) => l.ts[l.ts.length - 1] ?? 1));
+  let bot = lo ?? (all.length ? Math.floor(Math.min(...all)) - 2 : 55);
+  let top = hi ?? (all.length ? Math.ceil(Math.max(...all)) + 2 : 72);
+  if (top - bot < 12) { const c = (top + bot) / 2; bot = c - 6; top = c + 6; }
+  const yOf = (m) => h - ((m - bot) / (top - bot)) * h;
+  const xOf = (t) => ((t - t0) / Math.max(1e-6, t1 - t0)) * w;
+  g.font = '10px sans-serif';
+  for (let m = Math.ceil(bot); m <= top; m++) {
+    const nat = [0, 2, 4, 5, 7, 9, 11].includes(((m % 12) + 12) % 12);
+    if (!nat) continue;
+    g.strokeStyle = m % 12 === 0 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)';
+    g.beginPath(); g.moveTo(0, yOf(m)); g.lineTo(w, yOf(m)); g.stroke();
+    if (top - bot <= 30 || m % 12 === 0) { g.fillStyle = 'rgba(255,241,247,.45)'; g.fillText(noteName(m), 3, yOf(m) - 2); }
+  }
+  lines.forEach(({ ts, ms, color, shift = 0, dt = 0 }) => {
+    g.strokeStyle = color;
+    g.lineWidth = 2.2;
+    g.lineJoin = 'round';
+    g.beginPath();
+    let pen = false;
+    for (let i = 0; i < ts.length; i++) {
+      const m = ms[i];
+      if (m == null || (i && ts[i] - ts[i - 1] > 0.15 && ms[i - 1] == null)) { pen = false; if (m == null) continue; }
+      const x = xOf(ts[i] + dt);
+      const y = yOf(m + shift);
+      if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
+    }
+    g.stroke();
+  });
+};
+const drawPitchLive = () => {
+  const now = performance.now() / 1000;
+  drawPitchLines($('cvPitch'), [{ ts: live.hist.map((x) => x.t), ms: live.hist.map((x) => x.m), color: PINK }], { span: [now - 8, now] });
+};
+$('micBtn').addEventListener('click', startMic);
+$('freezeBtn').addEventListener('click', () => {
+  live.frozen = !live.frozen;
+  $('freezeBtn').textContent = live.frozen ? '▶ 続ける' : '⏸ 止めて見る';
+  $('micSt').textContent = live.frozen ? '止めています' : '分析しています';
+});
+
+// ================= 保存（この端末のブラウザの中だけ。IndexedDB） =================
+const DB_NAME = 'vocalAnalyzer';
+const openDb = () => new Promise((ok, ng) => {
+  const r = indexedDB.open(DB_NAME, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('clips', { keyPath: 'id', autoIncrement: true });
+  r.onsuccess = () => ok(r.result);
+  r.onerror = () => ng(r.error);
+});
+const tx = async (mode, fn) => {
+  const d = await openDb();
+  return new Promise((ok, ng) => {
+    const t = d.transaction('clips', mode);
+    const req = fn(t.objectStore('clips'));
+    t.oncomplete = () => ok(req?.result);
+    t.onerror = () => ng(t.error);
+  });
+};
+const putClip = (c) => tx('readwrite', (s) => s.add(c));
+const allClips = () => tx('readonly', (s) => s.getAll());
+const delClip = (id) => tx('readwrite', (s) => s.delete(id));
+
+// ================= ② 比べる =================
+const st = { artist: null, me: null, sel: { start: 0, len: 10 }, res: null, clips: [] };
+// clip: { id, kind, name, blob } → 読み込み後 { …, x, sr, dur }
+const loadClip = async (c) => {
+  if (c.x) return c;
+  const buf = await audio().decodeAudioData(await c.blob.arrayBuffer());
+  c.x = toMono(buf);
+  c.sr = buf.sampleRate;
+  c.dur = buf.duration;
+  return c;
+};
+const fmtDate = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const renderClips = () => {
+  ['artist', 'me'].forEach((kind) => {
+    const list = st.clips.filter((c) => c.kind === kind).sort((a, b) => b.created - a.created);
+    $(kind === 'artist' ? 'artistList' : 'meList').innerHTML = list.length ? list.map((c) =>
+      `<div class="clip${st[kind]?.id === c.id ? ' on' : ''}"><span class="nm" title="${esc(c.name)}">${esc(c.name)}</span><small>${fmtDate(c.created)}</small>`
+      + `<button type="button" class="ghost" data-pick="${c.id}">選ぶ</button><button type="button" class="ghost" data-del="${c.id}" aria-label="消す">✕</button></div>`).join('')
+      : `<p class="note">${kind === 'artist' ? 'まだありません。ボーカルだけの音源を読み込んでください。' : 'まだありません。比べたいフレーズを歌って録音してください。'}</p>`;
+  });
+  $('cmpBtn').disabled = !(st.artist && st.me);
+  $('cmpSt').textContent = st.artist && st.me ? `「${st.artist.name}」と「${st.me.name}」を比べます。` : 'アーティストの音源と、自分の声を1つずつ選んでください。';
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const refreshClips = async () => { st.clips = await allClips(); renderClips(); };
+const pickClip = async (id) => {
+  const c = st.clips.find((x) => x.id === id);
+  if (!c) return;
+  $('cmpSt').textContent = '読み込んでいます…';
+  try {
+    await loadClip(c);
+  } catch (e) {
+    console.warn('音声を読めませんでした', e);
+    $('cmpSt').textContent = 'この音声ファイルは読めませんでした（mp3・wav・m4a などを使ってください）。';
+    return;
+  }
+  st[c.kind] = c;
+  if (c.kind === 'artist') { st.sel = { start: 0, len: Math.min(10, c.dur) }; showSel(); }
+  renderClips();
+};
+const addFile = async (file, kind) => {
+  if (!file) return;
+  if (file.size > 60 * 1024 * 1024) { alert('ファイルが大きすぎます（60MBまで）。'); return; }
+  const id = await putClip({ kind, name: file.name.replace(/\.[^.]+$/, ''), blob: file, created: Date.now() });
+  await refreshClips();
+  await pickClip(id);
+};
+const bindPick = (spanId, inputId, kind) => {
+  const open = () => $(inputId).click();
+  $(spanId).addEventListener('click', open);
+  $(spanId).addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  $(inputId).addEventListener('change', (e) => { addFile(e.target.files[0], kind).catch((err) => alert(err.message)); e.target.value = ''; });
+};
+bindPick('artistPick', 'artistFile', 'artist');
+bindPick('mePick', 'meFile', 'me');
+document.addEventListener('click', async (e) => {
+  const t = e.target instanceof Element ? e.target.closest('[data-pick], [data-del]') : null;
+  if (!t) return;
+  if (t.dataset.pick) await pickClip(Number(t.dataset.pick));
+  else if (confirm('この音声を消しますか？')) {
+    const id = Number(t.dataset.del);
+    await delClip(id);
+    ['artist', 'me'].forEach((k) => { if (st[k]?.id === id) st[k] = null; });
+    if (!st.artist) $('selBox').hidden = true;
+    await refreshClips();
+  }
+});
+
+// 区間の選択（アーティストの音源）
+const MAX_LEN = 30;
+const showSel = () => {
+  $('selBox').hidden = false;
+  $('selName').textContent = `${st.artist.name}（${st.artist.dur.toFixed(1)}秒）`;
+  $('selStart').max = String(Math.max(0, st.artist.dur - 1));
+  syncSel();
+};
+const syncSel = () => {
+  const a = st.artist;
+  st.sel.start = clamp(st.sel.start, 0, Math.max(0, a.dur - 0.5));
+  st.sel.len = clamp(st.sel.len, 0.5, Math.min(MAX_LEN, a.dur - st.sel.start));
+  $('selStart').value = st.sel.start.toFixed(1);
+  $('selLen').value = st.sel.len.toFixed(1);
+  drawOverview();
+};
+const drawOverview = () => {
+  const a = st.artist;
+  const { g, w, h } = fitCanvas($('cvOver'));
+  g.clearRect(0, 0, w, h);
+  const per = Math.max(1, Math.floor(a.x.length / w));
+  g.fillStyle = 'rgba(255,122,184,.75)';
+  for (let px = 0; px < w; px++) {
+    let mn = 0;
+    let mx = 0;
+    for (let i = px * per; i < Math.min(a.x.length, (px + 1) * per); i += 4) { const v = a.x[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
+    g.fillRect(px, h / 2 - mx * (h / 2), 1, Math.max(1, (mx - mn) * (h / 2)));
+  }
+  const x0 = (st.sel.start / a.dur) * w;
+  const x1 = ((st.sel.start + st.sel.len) / a.dur) * w;
+  g.fillStyle = 'rgba(90,209,230,.25)';
+  g.fillRect(x0, 0, x1 - x0, h);
+  g.strokeStyle = CYAN;
+  g.lineWidth = 2;
+  g.strokeRect(x0, 1, x1 - x0, h - 2);
+};
+(() => {
+  const cv = $('cvOver');
+  let down = null;
+  const tOf = (e) => (clamp(e.offsetX, 0, cv.clientWidth) / cv.clientWidth) * st.artist.dur;
+  cv.addEventListener('pointerdown', (e) => { if (!st.artist) return; cv.setPointerCapture(e.pointerId); down = tOf(e); st.sel = { start: down, len: 0.5 }; syncSel(); });
+  cv.addEventListener('pointermove', (e) => { if (down == null) return; const t = tOf(e); st.sel = { start: Math.min(down, t), len: Math.max(0.5, Math.abs(t - down)) }; syncSel(); });
+  cv.addEventListener('pointerup', () => { down = null; });
+})();
+$('selStart').addEventListener('change', (e) => { st.sel.start = Number(e.target.value) || 0; syncSel(); });
+$('selLen').addEventListener('change', (e) => { st.sel.len = Number(e.target.value) || 10; syncSel(); });
+const selSamples = () => {
+  const a = st.artist;
+  return a.x.subarray(Math.floor(st.sel.start * a.sr), Math.floor((st.sel.start + st.sel.len) * a.sr));
+};
+$('selPlay').addEventListener('click', () => playSamples(selSamples(), st.artist.sr));
+
+// 録音（マイクの声をそのまま）
+let rec = null;
+$('recBtn').addEventListener('click', async () => {
+  if (rec) { rec.stop(); return; }
+  if (!(await startMic())) { $('recSt').textContent = 'マイクを使えません。'; return; }
+  if (!window.MediaRecorder) { $('recSt').textContent = 'このブラウザは録音に対応していません。'; return; }
+  const chunks = [];
+  rec = new MediaRecorder(live.stream);
+  const t0 = Date.now();
+  const timer = setInterval(() => {
+    const s = (Date.now() - t0) / 1000;
+    $('recSt').textContent = `録音中 ${s.toFixed(1)}秒（${MAX_LEN}秒まで）`;
+    if (s >= MAX_LEN && rec) rec.stop();
+  }, 100);
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = async () => {
+    clearInterval(timer);
+    rec = null;
+    $('recBtn').textContent = '● 録音する';
+    const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+    $('recSt').textContent = '';
+    const d = new Date();
+    const id = await putClip({ kind: 'me', name: `録音 ${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`, blob, created: Date.now() });
+    await refreshClips();
+    await pickClip(id);
+  };
+  rec.start();
+  $('recBtn').textContent = '■ 録音を止める';
+});
+
+// 比べる
+const BANDS = [['低い成分', 80, 500, '声の太さ・胸の響き'], ['中くらい', 500, 2000, '母音のはっきりさ'], ['響き', 2000, 4000, '通る声・抜ける声'], ['高い成分', 4000, 8000, '息・きらめき・歯擦音']];
+const bandShare = (r) => {
+  const tot = bandSum(r.ltas, r.binHz, 80, 8000);
+  return BANDS.map(([, lo, hi]) => db(bandSum(r.ltas, r.binHz, lo, hi) / tot));
+};
+$('cmpBtn').addEventListener('click', async () => {
+  $('cmpBtn').disabled = true;
+  try {
+    const a = st.artist;
+    const m = st.me;
+    const mx = m.x.subarray(0, Math.min(m.x.length, MAX_LEN * m.sr));
+    const ra = await analyzeSamples(selSamples(), a.sr, (f) => { $('cmpSt').textContent = `アーティストを分析しています… ${Math.round(f * 100)}%`; });
+    const rm = await analyzeSamples(mx, m.sr, (f) => { $('cmpSt').textContent = `自分の声を分析しています… ${Math.round(f * 100)}%`; });
+    if (ra.voicedRatio < 0.05 || rm.voicedRatio < 0.05) {
+      $('cmpSt').textContent = `${ra.voicedRatio < 0.05 ? 'アーティストの区間' : '自分の録音'}から声が見つかりませんでした。区間や録音を選び直してください。`;
+      return;
+    }
+    st.res = { ra, rm, mx, msr: m.sr };
+    $('result').hidden = false;
+    renderResult();
+    $('cmpSt').textContent = '比べました。';
+    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    console.error(e);
+    $('cmpSt').textContent = `分析できませんでした（${e.message}）`;
+  } finally {
+    $('cmpBtn').disabled = false;
+  }
+});
+// 1/6オクターブごとにまとめた平均の倍音の並び（見やすくするため）
+const smoothLtas = (r) => {
+  const out = new Float32Array(r.ltas.length);
+  for (let i = 1; i < r.ltas.length; i++) {
+    const f = i * r.binHz;
+    const lo = f / 2 ** (1 / 12);
+    const hi = f * 2 ** (1 / 12);
+    out[i] = bandSum(r.ltas, r.binHz, lo, hi) / Math.max(1, Math.round((hi - lo) / r.binHz));
+  }
+  return out;
+};
+const firstVoiced = (r) => r.ts[r.f0.findIndex((v) => v != null)] ?? 0;
+const renderResult = () => {
+  const { ra, rm } = st.res;
+  drawSpec([
+    { p: smoothLtas(ra), binHz: ra.binHz, color: CYAN, fill: 'rgba(90,209,230,.10)' },
+    { p: smoothLtas(rm), binHz: rm.binHz, color: PINK, fill: 'rgba(255,122,184,.10)' },
+  ], $('cvLtas'), false, 60);
+  const sa = bandShare(ra);
+  const sm = bandShare(rm);
+  $('bands').innerHTML = BANDS.map(([name, lo, hi, what], i) => {
+    const d = sm[i] - sa[i];
+    const word = d > 3 ? '自分のほうが多い' : d < -3 ? '自分のほうが少ない' : 'ほぼ同じ';
+    return `<div class="band">${name}（${lo >= 1000 ? `${lo / 1000}k` : lo}〜${hi / 1000}kHz）<b>${word}</b>${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}dB・${what}</div>`;
+  }).join('');
+  renderCmpPitch();
+  const A = ra.summary;
+  const M = rm.summary;
+  const f1 = (v, u = '') => (Number.isFinite(v) ? `${v.toFixed(1)}${u}` : '—');
+  const f0 = (v, u = '') => (Number.isFinite(v) ? `${Math.round(v)}${u}` : '—');
+  const rangeTxt = (s) => (Number.isFinite(s.low) ? `${noteName(s.low)}〜${noteName(s.high)}` : '—');
+  const vib = (s) => (Number.isFinite(s.vibRate) ? `${s.vibRate.toFixed(1)}Hz・±${Math.round(s.vibDepth)}セント` : Number.isFinite(s.vibShare) ? 'なし' : '伸ばした音が少ない');
+  const rows = [
+    ['中心の高さ', Number.isFinite(M.median) ? noteName(M.median) : '—', Number.isFinite(A.median) ? noteName(A.median) : '—', '歌った音の真ん中'],
+    ['音域', rangeTxt(M), rangeTxt(A), '下と上の5%を除いた範囲'],
+    ['明るさ', f0(M.centroid, 'Hz'), f0(A.centroid, 'Hz'), '高いほど明るくきらびやか。低いほど柔らかく暗め'],
+    ['響き', f1(M.ring, 'dB'), f1(A.ring, 'dB'), '大きいほど伴奏に負けずに通る声'],
+    ['倍音のきれいさ', f1(M.hnr, 'dB'), f1(A.hnr, 'dB'), '低いほど息っぽい・ハスキー'],
+    ['ビブラート', vib(M), vib(A), 'ふつうは5〜7Hz・±30〜100セントくらい'],
+    ['伸ばした音のうちビブラートの割合', Number.isFinite(M.vibShare) ? `${Math.round(M.vibShare * 100)}%` : '—', Number.isFinite(A.vibShare) ? `${Math.round(A.vibShare * 100)}%` : '—', 'まっすぐ伸ばすか、揺らすか'],
+  ];
+  $('cmpRows').innerHTML = rows.map(([k, m, a, how]) => `<tr><th>${k}</th><td class="num me">${m}</td><td class="num ar">${a}</td><td>${how}</td></tr>`).join('');
+};
+const renderCmpPitch = () => {
+  const { ra, rm } = st.res;
+  const align = $('alignSel').value;
+  const off = Number($('offsetIn').value) / 1000;
+  $('offsetSt').textContent = `${off >= 0 ? '+' : '−'}${Math.abs(off).toFixed(2)} 秒`;
+  const diff = ra.summary.median - rm.summary.median;
+  const shift = align === 'median' ? diff : align === 'octave' ? 12 * Math.round(diff / 12) : 0;
+  const a0 = firstVoiced(ra);
+  const m0 = firstVoiced(rm);
+  drawPitchLines($('cvCmpPitch'), [
+    { ts: ra.ts.map((t) => t - a0), ms: ra.f0, color: CYAN },
+    { ts: rm.ts.map((t) => t - m0), ms: rm.f0, color: PINK, shift, dt: off },
+  ]);
+};
+$('alignSel').addEventListener('change', () => st.res && renderCmpPitch());
+$('offsetIn').addEventListener('input', () => st.res && renderCmpPitch());
+$('playMe').addEventListener('click', () => st.res && playSamples(st.res.mx, st.res.msr));
+$('playAr').addEventListener('click', () => st.artist && playSamples(selSamples(), st.artist.sr));
+window.addEventListener('resize', () => { if (st.artist) drawOverview(); if (st.res) renderResult(); });
+
+// ================= 有料版の確認 =================
+const unlock = () => { $('gate').hidden = true; $('tools').hidden = false; refreshClips().catch((e) => console.warn('保存した音声を読めませんでした', e)); };
+const lockWith = (msg) => { $('gate').hidden = false; $('tools').hidden = true; if (msg) $('gateMsg').textContent = msg; };
+$('gateBuy').addEventListener('click', () => { location.href = '/?buy=1'; });
+$('gateLogin').addEventListener('click', () => { location.href = '/?login=1&back=analyzer'; });
+fetch('/api/me', { credentials: 'same-origin' })
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+  .then((me) => {
+    if (me.paid) unlock();
+    else lockWith(me.signedIn ? `${me.name} でログイン中です。有料版（月480円）にすると使えます。` : '有料版（月480円）にすると使えます。有料版の方はログインしてください。');
+  })
+  .catch((e) => { console.warn('有料版の状態を確かめられませんでした', e); lockWith('有料版の状態を確かめられませんでした。通信を確かめて、開き直してください。'); });
+</script>
+<script src="https://feedback.habatakijuku.com/feedback.js" defer></script>
+</body>
+</html>
