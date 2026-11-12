@@ -433,6 +433,9 @@ dialog.sheet-dlg[open] { animation: sheetIn .28s ease-out; }
 body[data-mode="song"] .sheet { max-width: 900px; justify-items: start; }
 body[data-mode="song"] #score { justify-items: start; }
 body[data-mode="song"] #score svg { max-width: none; }
+.lap-line { min-height: 1.3em; text-align: center; font-size: .86rem; color: var(--gold); letter-spacing: .04em; }
+#practiceBar { margin-top: 4px; }
+#tmeter { margin: 2px auto 4px; }
 </style>
 <link rel="stylesheet" href="studio.css?v=2">
 </head>
@@ -509,6 +512,7 @@ body[data-mode="song"] #score svg { max-width: none; }
       <div id="result" class="result" aria-live="polite" hidden></div>
       <div id="intro" class="intro">
         <div id="stageInfo" class="stage-info" aria-live="polite"></div>
+        <div id="practiceBar"></div>
         <div class="controls" id="bpmRow">
           <div class="bpm">
             <button id="bpmDown" class="ghost" type="button" aria-label="テンポを下げる">−</button>
@@ -532,6 +536,8 @@ body[data-mode="song"] #score svg { max-width: none; }
       </div>
       <div class="trail-box"><canvas id="trail" aria-label="声の高さのグラフ"></canvas></div>
       <div id="feedback" class="feedback" aria-live="off"></div>
+      <div id="lapLine" class="lap-line" aria-live="polite"></div>
+      <div id="tmeter" aria-hidden="true"></div>
       <div class="controls">
         <button id="hintBtn" class="ghost" type="button" hidden>♪ もう一度聞く</button>
         <button id="stopBtn" class="ghost" type="button" hidden>■ やめる</button>
@@ -626,6 +632,11 @@ body[data-mode="song"] #score svg { max-width: none; }
           <option value="100">100問</option>
         </select>
       </label>
+      <div class="field wide">
+        <span>声のタイミングの補正（曲の道の「出だし」の判定）</span>
+        <div class="row"><input id="latInput" type="number" min="-100" max="400" step="5" style="width:6em"> ミリ秒 <button type="button" class="ghost" id="calibBtn">マイクで測る</button></div>
+        <small id="calibMsg">「マイクで測る」を押すと、クリックが4つ鳴ったあと8回鳴ります。8回のクリックに合わせて「タッ」と短く歌ってください。マイクと声の高さの判定の遅れを測って、ここに入れます。ヘッドホンがおすすめです。</small>
+      </div>
       <label class="field wide">
         <span>お手本の音量</span>
         <input id="volInput" type="range" min="0" max="1" step="0.05">
@@ -736,6 +747,9 @@ body[data-mode="song"] #score svg { max-width: none; }
     <p>ロングトーンは1ステージ5回。伸ばす練習は、声が途切れず（8割以上）平均のずれが幅の中なら成功。音階は、それぞれの音の後半のずれで判定します。全体の8割以上でクリアです。</p>
     <p>音程と五線譜では、答えがわからないように、グラフに目標の高さを出しません（答えたあとに出ます）。</p>
     <p>曲の道は、フレーズごとにお手本を聞いてから、カウントのあとに楽譜どおりに歌います。曲は声域に入るように高さを変えて出します（音符の下のドレミは、その曲の「ド」から数えた名前です）。休符は数えず、0.3秒より短い音は合ったときだけ数えます。全体で合った音が8割以上でクリアです。</p>
+    <h3>曲の道の練習モードと「出だし」</h3>
+    <p>曲の道では、<b>速さ</b>（50〜100%）、<b>繰り返す</b>（選んだフレーズを「やめる」まで。1回ごとに結果を出します）、<b>1音ずつ合わせるまで待つ</b>（テンポなしで、その高さを0.4秒保てたら次の音へ）を選べます。練習モードの回は★の記録には入りません。</p>
+    <p>音が変わるところでは、声が目標の高さに入った時刻と楽譜の時刻のずれ（<b>出だし</b>）を測り、楽譜の下の帯に並べます（左が早い、右が遅い）。いつも遅めに出るときは、設定の「声のタイミングの補正」の「マイクで測る」で、マイクと判定の遅れを測って差し引けます。</p>
     <h3>無料版と有料版</h3>
     <p>音合わせの道はすべて無料です。音程・五線譜・ロングトーンの道は最初の2ステージ、曲の道は「メリーさんのひつじ」「きらきら星」「かえるの合唱」の3曲と、ほかの曲の最初のフレーズが無料です。有料版（月480円）にすると、すべてのステージ・自由練習・曲を練習でき、練習の記録を端末どうしで同期できます（記録の同期は無料の会員登録でも使えます）。</p>
     <h3>音程の名前</h3>
@@ -763,6 +777,7 @@ body[data-mode="song"] #score svg { max-width: none; }
 </dialog>
 
 <script src="songs.js?v=1"></script>
+<script src="timing.js?v=1"></script>
 <script src="record-sync.js?v=1"></script>
 <script src="billing.js?v=2"></script>
 <script>
@@ -772,8 +787,14 @@ const $ = (id) => document.getElementById(id);
 
 // ---- 記録 ----
 const STORE_KEY = 'vocalTrainer_v1';
+// 声の高さの判定（YIN の窓・ならし）で出だしが遅れて見える分の目安。マイクで測ると置きかわる
+const DEFAULT_LATENCY = 60;
 const defaultStore = () => ({
-  settings: { voice: 'alto', lo: 55, hi: 74, clef: 'auto', tol: 30, octaveFree: false, gate: 0.012, names: 'doremi', goal: 30, vol: 0.7, bpm: 72, onboarded: false },
+  settings: { voice: 'alto', lo: 55, hi: 74, clef: 'auto', tol: 30, octaveFree: false, gate: 0.012, names: 'doremi', goal: 30, vol: 0.7, bpm: 72, onboarded: false,
+    // 声の出だしの判定で差し引く遅れ（ミリ秒。マイクと声の高さの判定の分）
+    latency: DEFAULT_LATENCY,
+    // 曲の道の練習モード：速さ・フレーズの繰り返し・1音ずつ合わせるまで待つ
+    practice: { speed: 100, loop: false, from: 0, to: 0, wait: false } },
   stats: {}, best: {}, daily: { last: '', streak: 0, today: 0 }, total: { n: 0, ok: 0 }, last: { mode: 'match', stage: 0 },
 });
 const loadStore = () => {
@@ -1120,6 +1141,7 @@ const loopTick = () => {
   const { now, m } = tickPitch();
   if (run) runTick(now, m);
   if (rg.active) rangeTick(now, m);
+  if (calib) calib.frames.push({ t: now, raw: mic.trail[mic.trail.length - 1].raw });
   if (view === 'play') { updateReadout(m); drawTrail(now); }
   if ($('settingsDlg').open) updateMonitor(m);
 };
@@ -1197,6 +1219,7 @@ const currentTarget = () => {
   const q = run.q;
   if (!q) return null;
   if (q.kind === 'tone') return q.target;
+  if (q.wait) return q.wi >= 0 ? q.notes[q.wi] : null;
   const now = performance.now();
   const i = q.noteTimes ? q.noteTimes.findIndex((t, k) => now < (q.ends ? q.ends[k] : t + q.beatMs)) : -1;
   return i >= 0 ? q.notes[i] : null;
@@ -1555,6 +1578,7 @@ const renderHome = () => {
 };
 const renderStageInfo = () => {
   const st = stageOf();
+  renderPractice();
   if (mode === 'song') {
     const s = st.song;
     const part = s.locked ? `<br><span class="rule">無料版は最初のフレーズだけ（全${s.fullPhrases}フレーズ）</span>` : '';
@@ -2036,10 +2060,85 @@ const playDemo = () => {
   muteFor(t0 + spec.deg.length * beat);
 };
 
+// ---- 練習モード（速さ・フレーズの繰り返し・1音ずつ合わせるまで待つ）と、声の出だしの帯 ----
+const vocalPractice = () => ({ speed: 100, loop: false, from: 0, to: 0, wait: false, ...(S().practice || {}) });
+const meter = Timing.meter($('tmeter'), { good: 200, perfect: 80 });
+let practiceUI = null;
+const renderPractice = () => {
+  const on = mode === 'song';
+  ['practiceBar', 'lapLine', 'tmeter'].forEach((id) => $(id).classList.toggle('mode-off', !on));
+  if (!on) return;
+  const s = stageOf()?.song;
+  if (!s) return;
+  const pr = vocalPractice();
+  const last = s.phrases.length - 1;
+  pr.from = Math.min(pr.from, last);
+  pr.to = Math.min(Math.max(pr.to, pr.from), last);
+  S().practice = pr;
+  const opts = {
+    state: pr, waitLabel: '1音ずつ合わせるまで待つ',
+    ranges: s.phrases.map((_, i) => ({ value: i, label: `フレーズ${i + 1}` })),
+    note: (x) => (x.wait ? '待つ：お手本のあと、テンポなしで1音ずつ。その高さを0.4秒保てたら次の音へ（6秒合わなければお手本の音が鳴ります）'
+      : x.speed < 100 || x.loop ? `♩=${Math.round((s.tempo * x.speed) / 100)}${x.loop ? '・「やめる」まで繰り返す' : ''}。練習モードの回は★の記録には入りません` : ''),
+    onChange: (x) => { S().practice = { ...S().practice, ...x }; saveStore(); },
+  };
+  if (!practiceUI) practiceUI = Timing.practiceBar($('practiceBar'), opts);
+  else { practiceUI.update(opts); practiceUI.set(pr); }
+};
+
+// ---- 声のタイミングの補正をマイクで測る（4つのカウントのあと、8回のクリックに合わせて「タッ」）----
+let calib = null;
+const CALIB_BEAT = 750;
+const startCalib = async () => {
+  if (calib || run) return;
+  if (!(await startMic())) { $('calibMsg').textContent = 'マイクを使えません。マイクを許可してから、もう一度押してください。'; return; }
+  ensureAudio();
+  const t0 = actx.currentTime + 0.3;
+  for (let k = 0; k < 12; k++) click(t0 + (k * CALIB_BEAT) / 1000, k === 0 || k === 4);
+  const off = performance.now() - actx.currentTime * 1000;
+  calib = { frames: [], clicks: Array.from({ length: 8 }, (_, k) => off + t0 * 1000 + (4 + k) * CALIB_BEAT) };
+  $('calibBtn').disabled = true;
+  $('calibMsg').textContent = '4つ聞いたあと、8回のクリックに合わせて「タッ」と短く歌ってください…';
+  setTimeout(finishCalib, (t0 - actx.currentTime) * 1000 + 12 * CALIB_BEAT + 500);
+};
+const finishCalib = () => {
+  const c = calib;
+  calib = null;
+  $('calibBtn').disabled = false;
+  if (!c) return;
+  // 声域の近くの高さだけを声とみなす（クリックの音を拾わないように）
+  const voiced = (x) => x.raw != null && x.raw > S().lo - 7 && x.raw < S().hi + 7;
+  const dts = [];
+  c.clicks.forEach((ct) => {
+    const fs = c.frames.filter((x) => x.t >= ct - 250 && x.t <= ct + 500);
+    for (let k = 1; k + 1 < fs.length; k++) {
+      if (!voiced(fs[k - 1]) && voiced(fs[k]) && voiced(fs[k + 1])) { dts.push(fs[k].t - ct); break; }
+    }
+  });
+  if (dts.length < 4) {
+    $('calibMsg').textContent = `声の出だしを測れたのは${dts.length}回でした。4回以上必要です。1回ずつ声を切って、もう一度測ってください。`;
+    return;
+  }
+  S().latency = Math.max(-100, Math.min(400, Math.round(median(dts) / 5) * 5));
+  saveStore();
+  $('latInput').value = S().latency;
+  $('calibMsg').textContent = `${dts.length}回を測って、補正を ${S().latency}ミリ秒にしました（ばらつき ±${Math.round(Timing.stats(dts).sd ?? 0)}ミリ秒）。`;
+};
+
 // ---- 曲の道（フレーズごとに：お手本 → カウント → 歌う）----
 const startSong = () => {
   const s = stageOf().song;
-  run = { kind: 'song', mode: 'song', stage: stageIdx, song: s, sh: songShift(s), i: 0, scores: [], cents: [], q: null, tol: S().tol };
+  const pr = vocalPractice();
+  const last = s.phrases.length - 1;
+  const from = Math.min(pr.from, last);
+  const to = Math.min(Math.max(pr.to, from), last);
+  const list = pr.loop ? range(from, to) : range(0, last);
+  run = {
+    kind: 'song', mode: 'song', stage: stageIdx, song: s, sh: songShift(s), list, li: 0, i: list[0], scores: [], cents: [], q: null, tol: S().tol,
+    speed: pr.speed, loop: pr.loop, wait: pr.wait, practice: pr.wait || pr.loop || pr.speed < 100, onsets: [], laps: 0, lapMark: { scores: 0, onsets: 0 },
+  };
+  meter.reset();
+  $('lapLine').textContent = run.loop ? '1回ごとの結果をここに出します（「やめる」で終わります）' : '';
   setRunningUI(true);
   beginSongPhrase();
 };
@@ -2048,15 +2147,16 @@ const beginSongPhrase = () => {
   const s = run.song;
   const bars = songNotes(s, s.phrases[run.i]);
   const flat = bars.flat();
-  const beatMs = 60000 / s.tempo;
+  const beatMs = 60000 / ((s.tempo * run.speed) / 100);
   const q = {
     kind: 'phrase', bars, notes: flat.map((n) => (n.midi == null ? null : n.midi + run.sh.shift)), durMs: flat.map((n) => n.beats * beatMs),
     status: [], cur: -1, frames: flat.map(() => []), finalized: flat.map(() => false), noteTimes: null, ends: null, done: false,
+    track: [], wait: run.wait, wi: -1, holdStart: 0, noteStart: 0, hinted: false, heard: 0,
   };
   run.q = q;
   setFeedback('');
-  $('count').innerHTML = `${run.i + 1}<small> / ${s.phrases.length}</small>`;
-  setProg(run.i / s.phrases.length);
+  $('count').innerHTML = `${run.li + 1}<small> / ${run.list.length}</small>`;
+  setProg(run.li / run.list.length);
   showSheet(true);
   renderSong(s, bars, run.sh);
   $('prompt').innerHTML = `<small>フレーズ ${run.i + 1}：まずお手本を聞きます</small>`;
@@ -2068,6 +2168,13 @@ const beginSongPhrase = () => {
     if (q.notes[k] != null) tone(q.notes[k], t, n.beats * beat * 0.92);
     t += n.beats * beat;
   });
+  if (q.wait) {
+    // 待つ：お手本のあと、カウントなしで1音ずつ
+    muteFor(t);
+    q.waitFrom = performance.now() + (t - actx.currentTime) * 1000 + 250;
+    q.wi = q.notes.findIndex((m) => m != null);
+    return;
+  }
   // カウント：1小節（2つしかないときは2小節）。弱起はその分だけ早く入る
   const clickQ = s.click || 1;
   const [num, den] = s.time.split('/').map(Number);
@@ -2089,7 +2196,9 @@ const beginSongPhrase = () => {
 };
 const songTick = (now, m) => {
   const q = run.q;
+  if (q && q.wait && !q.done) { waitSongTick(now, m); return; }
   if (!q || !q.noteTimes || q.done) return;
+  if (now >= q.noteTimes[0] - 400) q.track.push({ t: now, raw: mic.trail[mic.trail.length - 1]?.raw ?? null });
   if (now < q.noteTimes[0]) {
     if (now >= q.countStart) {
       setCue('カウント', 'listen');
@@ -2130,24 +2239,110 @@ const evalSongPhrase = () => {
   const hits = counted.filter((s) => s === 'ok').length;
   const rate = counted.length ? hits / counted.length : 1;
   run.scores.push(rate);
-  recordItem('song', `${run.song.id}:${run.i}`, rate >= 0.8, 0);
+  if (!run.practice) recordItem('song', `${run.song.id}:${run.i}`, rate >= 0.8, 0);
   renderSong(run.song, q.bars, run.sh, { status: q.status });
+  const ons = onsetsOf(q);
+  ons.forEach((dt) => { run.onsets.push(dt); meter.push(dt); });
+  const st = Timing.stats(ons);
   popJudge(rate >= 0.8 ? 'Good!' : '✗', rate >= 0.8 ? 'perfect' : 'miss', `${hits} / ${counted.length}音`);
-  setFeedback(`${rate >= 0.8 ? '◎' : '✗'} 合った音 ${hits} / ${counted.length}`, rate >= 0.8 ? 'ok' : 'ng');
+  setFeedback(`${rate >= 0.8 ? '◎' : '✗'} 合った音 ${hits} / ${counted.length}${st.n ? `・出だし ${Timing.signed(st.mean)}（${Timing.tendency(st.mean)}）` : ''}`, rate >= 0.8 ? 'ok' : 'ng');
   setCue('');
-  later(() => {
-    if (!run) return;
-    run.i++;
-    if (run.i >= run.song.phrases.length) finishSong();
-    else beginSongPhrase();
-  }, 1800);
+  later(nextSongPhrase, 1800);
+};
+// 次のフレーズへ。繰り返しのときは最後のあと最初に戻る
+const nextSongPhrase = () => {
+  if (!run) return;
+  run.li++;
+  if (run.li >= run.list.length) {
+    if (!run.loop) { finishSong(); return; }
+    run.laps += 1;
+    const sc = run.scores.slice(run.lapMark.scores);
+    const st = Timing.stats(run.onsets.slice(run.lapMark.onsets));
+    run.lapMark = { scores: run.scores.length, onsets: run.onsets.length };
+    $('lapLine').textContent = `${run.laps}回目：${run.wait ? '1音ずつ合わせました' : `合った音の割合 ${Math.round(mean(sc) * 100)}%${st.n ? `・出だし ${Timing.signed(st.mean)}（${Timing.tendency(st.mean)}）` : ''}`}`;
+    run.li = 0;
+  }
+  run.i = run.list[run.li];
+  beginSongPhrase();
+};
+// 声の出だし：音が変わるところで、目標の高さに入った最初の時刻と、楽譜の時刻とのずれ（同じ高さが続く音は数えない）
+const onsetsOf = (q) => {
+  const out = [];
+  const tr = q.track;
+  q.notes.forEach((m, j) => {
+    if (m == null) return;
+    const prev = j > 0 ? q.notes[j - 1] : null;
+    if (prev != null && Math.abs(prev - m) < 1) return;
+    const tol = prev == null ? 100 : Math.min(100, Math.abs(prev - m) * 60);
+    const T = q.noteTimes[j];
+    const lim = T + Math.min(q.durMs[j] * 0.6, 400);
+    const ok = (x) => x.raw != null && Math.abs(centsOff(x.raw, m)) <= tol;
+    for (let k = 0; k + 1 < tr.length; k++) {
+      if (tr[k].t < T - 250) continue;
+      if (tr[k].t > lim) break;
+      if (ok(tr[k]) && ok(tr[k + 1])) { out.push(tr[k].t - T - (S().latency ?? DEFAULT_LATENCY)); break; }
+    }
+  });
+  return out;
+};
+// 待つ：1音ずつ、目標の高さを0.4秒保てたら次の音へ。6秒合わなければお手本の音を鳴らす
+const waitSongTick = (now, m) => {
+  const q = run.q;
+  if (now < q.waitFrom || q.wi < 0) return;
+  const target = q.notes[q.wi];
+  if (q.cur !== q.wi) {
+    q.cur = q.wi;
+    q.noteStart = now;
+    q.holdStart = 0;
+    q.hinted = false;
+    renderSong(run.song, q.bars, run.sh, { status: q.status, cur: q.wi });
+    setCue('🎤 1音ずつ合わせて歌う', 'sing');
+    $('prompt').innerHTML = '';
+  }
+  if (m != null && Math.abs(centsOff(m, target)) <= run.tol) {
+    if (!q.holdStart) q.holdStart = now;
+    if (now - q.holdStart >= HOLD_MS) {
+      q.status[q.wi] = q.hinted ? 'skip' : 'ok';
+      if (q.hinted) q.heard += 1;
+      const nx = q.notes.findIndex((x, k) => k > q.wi && x != null);
+      q.notes.forEach((x, k) => { if (k > q.wi && (nx < 0 || k < nx) && x == null) q.status[k] = 'rest'; });
+      if (nx < 0) { evalWaitPhrase(); return; }
+      q.wi = nx;
+    }
+  } else {
+    q.holdStart = 0;
+    if (m != null) setFeedback(centsOff(m, target) < 0 ? '↑ もっと高く' : '↓ もっと低く', 'ng');
+  }
+  if (!q.hinted && now - q.noteStart > 6000) {
+    q.hinted = true;
+    playSeq([target], 0.8);
+    setFeedback('お手本の音を鳴らしました', 'good');
+  }
+};
+const evalWaitPhrase = () => {
+  const q = run.q;
+  q.done = true;
+  const n = q.notes.filter((x) => x != null).length;
+  run.scores.push((n - q.heard) / Math.max(1, n));
+  renderSong(run.song, q.bars, run.sh, { status: q.status });
+  popJudge('Good!', 'perfect', `${n}音`);
+  setFeedback(`◎ ${n}音を合わせました${q.heard ? `（うち${q.heard}音はお手本を聞いてから）` : ''}`, 'ok');
+  setCue('');
+  later(nextSongPhrase, 1500);
 };
 const finishSong = () => {
   const r = run;
   stopRun(false);
   const score = mean(r.scores);
   const avgC = mean(r.cents);
-  const line1 = `合った音の割合 ${Math.round(score * 100)}%・平均のずれ ${Math.round(avgC)}セント`;
+  const ost = Timing.stats(r.onsets);
+  const line1 = r.wait
+    ? `お手本を聞かずに合わせた音の割合 ${Math.round(score * 100)}%`
+    : `合った音の割合 ${Math.round(score * 100)}%・平均のずれ ${Math.round(avgC)}セント${ost.n ? `・出だし ${Timing.signed(ost.mean)}（${Timing.tendency(ost.mean)}）` : ''}`;
+  if (r.practice) {
+    showResult(null, `${r.laps ? `${r.laps}回くり返して ` : ''}${line1}`, `練習モード（${[r.speed < 100 ? `速さ ${r.speed}%` : '', r.loop ? '繰り返し' : '', r.wait ? '待つ' : ''].filter(Boolean).join('・')}）の回は、★の記録には入りません`);
+    return;
+  }
   if (r.song.locked) {
     showResult(null, line1, `無料版はここまで（全${r.song.fullPhrases}フレーズ中の1つ目）。続きは有料版で歌えます。`);
     const b = document.createElement('button');
@@ -2166,7 +2361,7 @@ const playSongDemo = () => {
   const s = stageOf().song;
   const sh = songShift(s);
   ensureAudio();
-  const beat = 60 / s.tempo;
+  const beat = 60 / ((s.tempo * vocalPractice().speed) / 100);
   let t = actx.currentTime + 0.08;
   songNotes(s, s.phrases[0]).flat().forEach((n) => {
     if (n.midi != null) tone(n.midi + sh.shift, t, n.beats * beat * 0.92);
@@ -2198,6 +2393,7 @@ const startRun = async () => {
   else startFlash();
 };
 const stopRun = (showIdle = true) => {
+  if (showIdle && run && run.kind === 'song' && run.loop && run.scores.length) { clearTimers(); finishSong(); return; }
   clearTimers();
   const wasFree = run && run.stage === FREE && run.kind === 'flash' && run.results.length;
   const r = run;
@@ -2367,6 +2563,8 @@ const setBpm = (v) => {
   saveStore();
 };
 $('bpmInput').addEventListener('change', (e) => setBpm(e.target.value));
+$('calibBtn').addEventListener('click', startCalib);
+$('latInput').addEventListener('change', (e) => { S().latency = Math.max(-100, Math.min(400, Math.round(Number(e.target.value) || 0))); e.target.value = S().latency; saveStore(); });
 $('bpmDown').addEventListener('click', () => setBpm(S().bpm - 4));
 $('bpmUp').addEventListener('click', () => setBpm(S().bpm + 4));
 
@@ -2389,6 +2587,7 @@ const syncSettingsUI = () => {
   $('goalSel').value = String(st.goal);
   $('volInput').value = st.vol;
   $('bpmInput').value = st.bpm;
+  $('latInput').value = st.latency ?? DEFAULT_LATENCY;
 };
 const afterRangeChange = () => {
   saveStore();
