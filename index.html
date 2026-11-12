@@ -777,7 +777,7 @@ body[data-mode="song"] #score svg { max-width: none; }
   </div>
 </dialog>
 
-<script src="songs.js?v=2"></script>
+<script src="songs.js?v=3"></script>
 <script src="timing.js?v=2"></script>
 <script src="assess.js?v=1"></script>
 <script src="record-sync.js?v=1"></script>
@@ -1374,7 +1374,7 @@ const KEY_ACCS = { 0: 0, 1: 5, 2: 2, 3: 3, 4: 4, 5: 1, 6: 6, 7: 1, 8: 4, 9: 3, 1
 const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
   const el = $('score');
   el.innerHTML = '';
-  const H = 190;
+  const H = song.lyrics ? 214 : 190;
   const head = 78;
   const widths = bars.map((b, k) => 46 + b.length * 40 + (k === 0 ? head + 12 * KEY_ACCS[((sh.shift % 12) + 12) % 12] : 0));
   const w = widths.reduce((a, b) => a + b, 0) + 20;
@@ -1398,6 +1398,9 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
     }
     stave.setContext(ctx).draw();
     x += widths[k];
+    // 歌詞（あれば）：音符の数だけ空白で区切った音節を、休符をとばして順に付ける
+    const lyr = (song.lyrics?.[bar[0]?.bar] || '').trim().split(/\s+/).filter(Boolean);
+    let li = 0;
     const vn = bar.map((n) => {
       const dur = n.vf + (n.midi == null ? 'r' : '');
       if (n.midi == null) {
@@ -1412,6 +1415,8 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
       if (n.dots) VF.Dot.buildAndAttach([sn], { all: true });
       const label = S().names === 'doremi' ? DOREMI[n.letter] : pcName(m % 12, sh.flat);
       sn.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
+      const word = lyr[li++];
+      if (word) sn.addModifier(new VF.Annotation(word).setFont('Noto Sans JP', 15, 'bold').setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
       return sn;
     });
     const voice = new VF.Voice({ num_beats: num, beat_value: den }).setMode(VF.Voice.Mode.SOFT);
