@@ -1577,6 +1577,7 @@ const renderHome = () => {
   $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile${isLocked(m, FREE) ? ' locked' : ''}" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
     + '<button type="button" class="tile" data-assess><span class="ic" style="background:#fff1d6">🎯</span><span><b>実力テスト</b><small id="assessLast">約3分。音合わせ6問と音程12問で、音程の正確さとレベル1〜10を測ります（無料）</small></span></button>'
     + '<button type="button" class="tile" data-range><span class="ic" style="background:#fbe5ef">🎤</span><span><b>声域を測る</b><small>いちばん低い声と高い声を歌って、練習の音域を決める</small></span></button>'
+    + '<a class="tile" href="/technique/" style="text-decoration:none;color:inherit"><span class="ic" style="background:#f3e6f7">🎙️</span><span><b>テクニックの道</b><small>ビブラート・ファルセット・ベルティング・グロウル・ガテラルを、女声・男声のお手本とマイク判定で（2つ無料）</small></span></a>'
     + `<a class="tile${BILLING_ON && !account.paid ? ' locked' : ''}" href="/analyzer/" style="text-decoration:none;color:inherit"><span class="ic" style="background:#e8eef6">📈</span><span><b>声の分析</b><small>波形・倍音・ビブラートを見て、理想のアーティストの声と比べる</small></span></a>`
     + '<button type="button" class="tile" data-open="helpDlg"><span class="ic" style="background:#e8eef6">📖</span><span><b>音程と楽譜の見方</b><small>音程の名前・ト音記号とヘ音記号・セント</small></span></button>';
 };

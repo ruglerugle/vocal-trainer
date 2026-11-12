@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="ja" data-app="vocal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>テクニックの道｜ヴォーカルトレーナー</title>
+<meta name="description" content="ビブラート・ファルセット・ベルティング・グロウル・ガテラルを、お手本の声を聞いてマイクで判定しながら練習します。">
+<link rel="canonical" href="https://vocal-trainer.habatakijuku.com/technique/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23c2367a'/%3E%3Crect x='15' y='7' width='10' height='17' rx='5' fill='%23fff'/%3E%3Cpath d='M11 19a9 9 0 0 0 18 0M20 28v5M15 33h10' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.7; overflow-x: hidden; }
+[hidden] { display: none !important; }
+button { font: inherit; cursor: pointer; border: 0; padding: 9px 18px; }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 10px 16px; backdrop-filter: blur(10px); }
+.topbar a.back { text-decoration: none; }
+.topbar h1 { margin: 0; font-size: 1.1rem; flex: 1; }
+.page { max-width: 980px; margin: 0 auto; padding: 8px 16px 48px; }
+.lead { color: var(--muted); margin: 4px 0 18px; }
+.card { border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+.list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.tq { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; text-align: left; border-radius: 16px; padding: 14px 16px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--line) inset; letter-spacing: .02em; }
+.tq:hover { background: var(--panel2); }
+.tq .n { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 1px var(--line) inset; color: var(--muted); font-size: .9rem; }
+.tq.done .n { box-shadow: 0 0 0 1px var(--gold) inset; color: var(--gold); }
+.tq b { display: block; font-weight: 500; }
+.tq small { display: block; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.tq .lk { display: inline-block; margin-left: 6px; padding: 0 7px; font-size: .62rem; letter-spacing: .2em; color: var(--gold); box-shadow: 0 0 0 1px rgba(201, 169, 110, .45) inset; border-radius: 999px; vertical-align: 2px; }
+.tq .risk { display: inline-block; margin-left: 6px; font-size: .7rem; color: #e3a072; }
+h2 { font-weight: 400; letter-spacing: .06em; margin: 0 0 8px; font-size: 1.3rem; }
+h3 { font-weight: 500; font-size: 1rem; margin: 18px 0 6px; letter-spacing: .04em; }
+.detail p { margin: 0 0 10px; }
+.safety { border-radius: 14px; padding: 12px 14px; background: rgba(227, 160, 114, .08); box-shadow: 0 0 0 1px rgba(227, 160, 114, .35) inset; font-size: .9rem; }
+.safety b { color: #e3a072; font-weight: 500; }
+ol.steps { margin: 0; padding-left: 1.3em; }
+ol.steps li { margin-bottom: 6px; }
+.demo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.demo audio { width: min(100%, 420px); }
+.demo .none { color: var(--muted); font-size: .88rem; }
+.vsw { display: flex; gap: 3px; background: var(--panel2); border-radius: 999px; padding: 3px; }
+.vsw button { padding: 5px 14px; font-size: .85rem; border-radius: 999px; background: transparent; color: var(--muted); box-shadow: none; }
+.vsw button[aria-pressed="true"] { background: var(--gold-grad, var(--gold)); color: #17130b; }
+.take { border-radius: 16px; padding: 16px; background: #0b0b0d; box-shadow: 0 0 0 1px var(--line) inset; display: grid; gap: 12px; }
+.take .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.live { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; }
+.live b { font-size: 1.8rem; font-weight: 300; min-width: 3.5em; display: inline-block; }
+.lv { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.lv i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .05s; }
+.count { font-size: 2.2rem; font-weight: 200; text-align: center; min-height: 1.3em; color: var(--gold); }
+.res { border-radius: 14px; padding: 14px; background: var(--paper); box-shadow: 0 0 0 1px var(--line) inset; }
+.res h4 { margin: 0 0 6px; font-size: 1.1rem; font-weight: 400; letter-spacing: .06em; }
+.res.ok h4 { color: var(--gold); }
+.res.ng h4 { color: #e3a072; }
+.res table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.res td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.res td.v { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.res td.ok { color: var(--gold); } .res td.ng { color: #e3a072; }
+.res .tip { margin: 8px 0 0; font-size: .88rem; color: var(--muted); }
+.note { font-size: .82rem; color: var(--muted); }
+.gate { text-align: center; padding: 24px 16px; }
+footer { text-align: center; font-size: .8rem; color: var(--muted); padding: 10px 16px 40px; }
+</style>
+<link rel="stylesheet" href="../studio.css?v=2">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="/">← ヴォーカルトレーナー</a>
+  <h1>テクニックの道</h1>
+</header>
+
+<main class="page">
+  <div id="listView">
+    <p class="lead">お手本の声を聞いて、マイクで歌い、できているかを測ります。上から順に、のどに負担の少ないものから並んでいます。判定はマイクの音から測った<b>目安</b>です。</p>
+    <div class="card safety">
+      <b>のどを守るために</b>　ウォームアップ（ハミングや軽い発声）をしてから始め、1回は5秒まで・1つのテクニックは1日10回までにしてください。痛み・かすれ・違和感が出たら、その日はやめて休みます。水をこまめに飲み、体調の悪い日はしません。グロウルやガテラルを続けて練習するなら、声の専門家（ボイストレーナーや耳鼻咽喉科）に一度見てもらうと安心です。
+    </div>
+    <div id="list" class="list"></div>
+  </div>
+
+  <div id="detailView" hidden>
+    <p><button type="button" class="ghost" id="backBtn">← テクニックの一覧</button></p>
+    <div class="card detail" id="detail"></div>
+  </div>
+</main>
+
+<footer>声はこの端末の中だけで解析し、録音もせず、どこにも送りません。お手本の声は Suno で作りました。<br><a href="/">ヴォーカルトレーナーへ戻る</a>・<a href="https://habatakijuku.com/">羽ばたき塾</a></footer>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const NAMES = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
+const noteName = (m) => { const r = Math.round(m); return `${NAMES[((r % 12) + 12) % 12]}${Math.floor(r / 12) - 1}`; };
+const hzToMidi = (f) => 69 + 12 * Math.log2(f / 440);
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
+const median = (a) => { if (!a.length) return NaN; const b = [...a].sort((x, y) => x - y); const n = b.length; return n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2; };
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const db = (p) => 10 * Math.log10(Math.max(p, 1e-12));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// ---- 記録（ヴォーカルトレーナーと同じ localStorage。テクニックごとの最高の結果） ----
+const STORE_KEY = 'vocalTrainer_v1';
+const loadStore = () => { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch (e) { console.warn('記録を読めませんでした', e); return {}; } };
+const saveTech = (id, rec) => {
+  const st = loadStore();
+  st.tech = st.tech && typeof st.tech === 'object' ? st.tech : {};
+  const old = st.tech[id];
+  st.tech[id] = { ok: (old?.ok || 0) + (rec.ok ? 1 : 0), tries: (old?.tries || 0) + 1, last: rec.date };
+  if (rec.base) st.tech.base = rec.base;
+  st.mtime = Date.now();
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { console.warn('記録を保存できませんでした', e); }
+};
+const techRec = (id) => loadStore().tech?.[id];
+const voiceRange = () => { const s = loadStore().settings || {}; return { lo: s.lo ?? 55, hi: s.hi ?? 74 }; };
+
+// ================= 信号処理（声の分析ページと同じ道具） =================
+const halve = (x) => { const y = new Float32Array(x.length >> 1); for (let i = 0; i < y.length; i++) y[i] = (x[2 * i] + x[2 * i + 1]) / 2; return y; };
+// YIN 法。fmin〜fmax の基本周波数と、周期性の弱さ（0=きれいな周期、1=雑音）
+const yin = (x, sr, fmin = 70, fmax = 1100, th = 0.15) => {
+  const W = x.length >> 1;
+  const tMin = Math.floor(sr / fmax);
+  const tMax = Math.min(W - 1, Math.ceil(sr / fmin));
+  const d = new Float32Array(tMax + 2);
+  for (let t = 1; t <= tMax + 1; t++) { let s = 0; for (let i = 0; i < W; i++) { const v = x[i] - x[i + t]; s += v * v; } d[t] = s; }
+  let run = 0;
+  const cm = new Float32Array(tMax + 2);
+  cm[0] = 1;
+  for (let t = 1; t <= tMax + 1; t++) { run += d[t]; cm[t] = run ? (d[t] * t) / run : 1; }
+  let tau = -1;
+  for (let t = tMin; t <= tMax; t++) if (cm[t] < th) { while (t + 1 <= tMax && cm[t + 1] < cm[t]) t++; tau = t; break; }
+  let best = tMin;
+  for (let t = tMin; t <= tMax; t++) if (cm[t] < cm[best]) best = t;
+  if (tau < 0) { if (cm[best] > 0.35) return { f0: 0, aper: Math.min(1, cm[best]) }; tau = best; }
+  const a = cm[tau - 1] ?? cm[tau];
+  const c = cm[tau + 1] ?? cm[tau];
+  const den = a - 2 * cm[tau] + c;
+  return { f0: sr / (tau + (den ? clamp((a - c) / (2 * den), -1, 1) : 0)), aper: clamp(cm[tau], 1e-4, 1) };
+};
+const hnrOf = (aper) => clamp(10 * Math.log10((1 - aper) / aper), -5, 40);
+const rmsOf = (x) => { let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * x[i]; return Math.sqrt(s / x.length); };
+const fft = (re, im) => {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = (-2 * Math.PI) / len; const wr = Math.cos(ang); const wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1; let ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ar = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci; const ai = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k + len / 2] = re[i + k] - ar; im[i + k + len / 2] = im[i + k] - ai; re[i + k] += ar; im[i + k] += ai;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+};
+const powerSpectrum = (x) => {
+  const n = x.length; const re = new Float32Array(n); const im = new Float32Array(n);
+  for (let i = 0; i < n; i++) re[i] = x[i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)));
+  fft(re, im);
+  const p = new Float32Array(n / 2);
+  for (let i = 0; i < n / 2; i++) p[i] = re[i] * re[i] + im[i] * im[i];
+  return p;
+};
+const band = (p, binHz, lo, hi) => { let s = 0; for (let i = Math.max(1, Math.floor(lo / binHz)); i <= Math.min(p.length - 1, Math.ceil(hi / binHz)); i++) s += p[i]; return s; };
+// 揺れ（ビブラート）の速さと深さ（セント）。ゆっくりした動きは0.25秒の移動平均で取りのぞく
+const vibratoOf = (ts, ms) => {
+  if (ms.length < 20) return null;
+  const dur = ts[ts.length - 1] - ts[0];
+  const c = ms.map((m) => m * 100);
+  const trend = c.map((_, i) => mean(c.filter((__, j) => Math.abs(ts[j] - ts[i]) <= 0.125)));
+  const r = c.map((v, i) => v - trend[i]);
+  let z = 0;
+  for (let i = 1; i < r.length; i++) if ((r[i - 1] < 0) !== (r[i] < 0)) z++;
+  return { rate: z / 2 / dur, depth: Math.sqrt(2) * Math.sqrt(mean(r.map((v) => v * v))) };
+};
+// 1回ぶんの録音を調べる
+const analyzeTake = (x, sr) => {
+  const N = 2048; const hop = 512;
+  const fr = [];
+  for (let s = 0; s + N <= x.length; s += hop) {
+    const f = x.subarray(s, s + N);
+    const rms = rmsOf(f);
+    const y = halve(f);
+    const p = rms > 0.004 ? yin(y, sr / 2) : { f0: 0, aper: 1 };
+    const ps = powerSpectrum(f);
+    const binHz = sr / N;
+    const tot = band(ps, binHz, 80, 5000);
+    fr.push({
+      t: (s + N / 2) / sr, rms, f0: p.f0, aper: p.aper,
+      cent: (() => { let a = 0; let w = 0; for (let i = Math.floor(80 / binHz); i < Math.min(ps.length, 8000 / binHz); i++) { a += ps[i]; w += ps[i] * i * binHz; } return a ? w / a : 0; })(),
+      ring: db(band(ps, binHz, 2000, 4000)) - db(band(ps, binHz, 80, 2000)),
+      // H1−H2：基音と2倍音の強さの差（dB）。裏声ほど大きい
+      h1h2: p.f0 ? db(band(ps, binHz, p.f0 * 0.8, p.f0 * 1.2)) - db(band(ps, binHz, p.f0 * 1.8, p.f0 * 2.2)) : NaN,
+    });
+  }
+  const loud = fr.filter((f) => f.rms > 0.01);
+  const voiced = loud.filter((f) => f.f0);
+  const ms = voiced.map((f) => hzToMidi(f.f0));
+  const sus = voiced.length ? voiced[voiced.length - 1].t - voiced[0].t : 0;
+  const pitchSd = ms.length > 3 ? Math.sqrt(mean(ms.map((m) => (m - median(ms)) ** 2))) * 100 : NaN;
+  return {
+    dur: x.length / sr,
+    loudRatio: loud.length / Math.max(1, fr.length),
+    voicedRatio: voiced.length / Math.max(1, loud.length),
+    loudSec: loud.length * hop / sr,
+    sustain: sus,
+    pitch: median(ms), pitchSd,
+    hnr: median(loud.map((f) => hnrOf(f.aper))),
+    cent: median(loud.map((f) => f.cent)),
+    ring: median(voiced.map((f) => f.ring)),
+    level: db(mean(loud.map((f) => f.rms * f.rms))),
+    h1h2: median(voiced.map((f) => f.h1h2).filter(Number.isFinite)),
+    vib: vibratoOf(voiced.map((f) => f.t), ms),
+  };
+};
+
+// ================= テクニック =================
+const fmt = (v, d = 0, u = '') => (Number.isFinite(v) ? `${v.toFixed(d)}${u}` : '—');
+const TECHS = [
+  {
+    id: 'vibrato', name: 'ビブラート', free: true, sec: 4, sub: '伸ばした音を、1秒に5〜7回ゆらす',
+    what: '伸ばした音の高さを、1秒に5〜7回、上下に小さくゆらす歌い方です。のどで無理にゆらすのではなく、息の流れが安定してのどの力が抜けると、自然に生まれます。',
+    steps: ['「あー」を3秒、まっすぐ伸ばします（ゆれない声が出発点）。', '半音ほど上と下を、1秒に2回のゆっくりした速さで行き来します。', '少しずつ速くして、1秒に5回くらいにします。', '高さを意識するのをやめて、息を流したまま力を抜くと、自然なゆれになります。'],
+    target: 'ゆれの速さ 4.5〜7.5回/秒・深さ ±25〜120セント、2秒以上伸ばす',
+    judge: (a) => [
+      ['声を伸ばした長さ', fmt(a.sustain, 1, '秒'), a.sustain >= 2],
+      ['ゆれの速さ', fmt(a.vib?.rate, 1, '回/秒'), a.vib && a.vib.rate >= 4.5 && a.vib.rate <= 7.5],
+      ['ゆれの深さ', a.vib ? `±${Math.round(a.vib.depth)}セント` : '—', a.vib && a.vib.depth >= 25 && a.vib.depth <= 120],
+    ],
+    tip: (a) => (!a.vib || a.vib.depth < 25 ? 'ゆれが小さめです。ステップ2のゆっくりした行き来から、もう一度。' : a.vib.rate > 7.5 ? 'ゆれが速すぎます（ちりめんビブラート）。息を流して、のどの力を抜きます。' : a.vib.rate < 4.5 ? 'ゆれがゆっくりです。少しずつ速くしていきます。' : ''),
+  },
+  {
+    id: 'falsetto', name: 'ファルセット', free: true, sec: 3, sub: '息まじりの、やわらかい裏声',
+    what: '声帯の端だけを薄く震わせて出す、やわらかい裏声です。地声よりも倍音（上のほうの成分）が少なく、いちばん下の音（基音）が目立つ、丸い響きになります。',
+    steps: ['フクロウの「ホー」のように、高めの音でやさしく声を出します。', '高いところから下へ、すべり台のように音を下げます（ひっくり返ってもかまいません）。', '声域の上のほうで、「ウー」を3秒伸ばします。'],
+    target: '声域のまん中より高い音で、基音と2倍音の差（H1−H2）が10dB以上、2秒以上',
+    judge: (a) => { const { lo, hi } = voiceRange(); const mid = (lo + hi) / 2; return [
+      ['声を伸ばした長さ', fmt(a.sustain, 1, '秒'), a.sustain >= 2],
+      ['音の高さ', Number.isFinite(a.pitch) ? noteName(a.pitch) : '—', a.pitch >= mid],
+      ['基音と2倍音の差（大きいほど裏声らしい）', fmt(a.h1h2, 1, 'dB'), a.h1h2 >= 10],
+    ]; },
+    tip: (a) => (!(a.h1h2 >= 10) ? 'まだ地声の響きが多めです。息を少し多めにして、力を抜いた「ホー」で。' : ''),
+  },
+  {
+    id: 'belt', name: 'ベルティング', sec: 3, base: true, sub: '地声のまま、高い音を強く響かせる',
+    what: '地声のまま高い音を、強く明るく響かせる歌い方です。叫び声ではなく、口を横に開いた「エ」や「ア」で、響きを顔の前に集めるのがこつです。2〜4kHz の「通る響き」が増え、明るい音色になります。',
+    steps: ['まず「基準の声を録る」で、ふつうの話し声の「あー」を録ります（比べるため）。', '話し声のまま「ヘイ！」と呼びかけます。', '声域の上のほうで、「エー」を短く強く。', '響きを前に保ったまま、3秒伸ばします。'],
+    target: '基準の声より、2〜4kHz の響きが3dB以上・明るさが20%以上増え、高さが安定して2秒以上',
+    safety: '首や肩に力が入る・声がかすれるときは、音を下げてください。1日10回まで。',
+    judge: (a, base) => base ? [
+      ['声を伸ばした長さ', fmt(a.sustain, 1, '秒'), a.sustain >= 2],
+      ['2〜4kHz の響き（基準との差）', `${fmt(a.ring - base.ring, 1, 'dB')}`, a.ring - base.ring >= 3],
+      ['明るさ（基準との比）', `${fmt((a.cent / base.cent - 1) * 100, 0, '%')}`, a.cent / base.cent >= 1.2],
+      ['高さの安定', `±${fmt(a.pitchSd, 0, 'セント')}`, a.pitchSd <= 45],
+    ] : [['基準の声', 'まだありません', false]],
+    tip: (a, base) => (!base ? '先に「基準の声を録る」を押して、ふつうの声を録ってください。' : a.ring - base.ring < 3 ? '響きがまだ基準と同じくらいです。口を横に開いて「エ」で、響きを前に。' : ''),
+  },
+  {
+    id: 'growl', name: 'グロウル', sec: 3, risk: true, sub: '音程のある声を、ざらつかせる',
+    what: '声帯で鳴らす音程のある声に、その上にあるひだ（仮声帯や披裂喉頭蓋ひだ）の震えを重ねて、ざらつかせる歌い方です。声帯そのものを強くこすり合わせる「叫び」ではありません。水を使わないうがいの「ガラガラ」のように、のどの奥が楽に震える感覚が土台です。',
+    steps: ['水なしのうがいの「ガラガラ」を、息だけで3秒できるようにしておきます。', 'ふつうの「あー」を出し、のどの奥でガラガラを少しだけ重ねます。', '音程が聞こえる程度のざらつきで、3秒続けます。'],
+    target: '音程が聞こえる（声の30%以上）まま、倍音のきれいさが10dB以下にざらつく（ふつうの声は20dB以上）',
+    safety: '痛み・かすれ・せきが出たらすぐやめます。叫ぶように大きな声は出しません。1回5秒・1日10回まで。続けるなら声の専門家に一度見てもらってください。',
+    judge: (a) => [
+      ['声を出した長さ', fmt(a.loudSec, 1, '秒'), a.loudSec >= 1.5],
+      ['音程が聞こえる割合', fmt(a.voicedRatio * 100, 0, '%'), a.voicedRatio >= 0.3],
+      ['倍音のきれいさ（低いほどざらつく）', fmt(a.hnr, 1, 'dB'), a.hnr <= 10],
+    ],
+    tip: (a) => (a.voicedRatio < 0.3 ? '音程がほとんど聞こえません。ざらつきを減らして、もとの声を残します。' : a.hnr > 10 ? 'まだきれいな声に近いです。ガラガラを少しだけ強めます。' : ''),
+  },
+  {
+    id: 'guttural', name: 'ガテラル', sec: 3, risk: true, sub: '音程のない、低く濁った声',
+    what: '声帯ではっきりした音程を作らず、息とのどの奥のひだの震えで出す、低く濁った音です。デスメタルなどで使われます。息の量で音をつくるので、のどに力を入れないことが何より大事です。',
+    steps: ['グロウルが楽にできるようにしておきます。', '息を吸いこむときの「ゴー」という音をまねて、のどの奥の震えを確かめます。', '吐く息で同じ震えを作り、低く短く「グー」と3秒。'],
+    target: '音程がほとんどなく（雑音の多い声が70%以上）、明るさが1500Hz以下の低い音色',
+    safety: 'もっとも負担の大きい発声です。痛み・かすれ・せきが出たらすぐやめます。1回5秒・1日10回まで。続けるなら声の専門家に見てもらってください。',
+    judge: (a) => [
+      ['声を出した長さ', fmt(a.loudSec, 1, '秒'), a.loudSec >= 1.5],
+      ['雑音の多い声の割合', fmt((1 - a.voicedRatio) * 100, 0, '%'), 1 - a.voicedRatio >= 0.7],
+      ['明るさ（低いほど深い）', fmt(a.cent, 0, 'Hz'), a.cent <= 1500],
+    ],
+    tip: (a) => (1 - a.voicedRatio < 0.7 ? '音程が残っています。声帯で鳴らさず、息と奥の震えだけで。' : a.cent > 1500 ? '音色が明るめです。口の中を広く、のどの奥を下げるように。' : ''),
+  },
+];
+
+// ================= 有料版の確認 =================
+let paid = false;
+const locked = (t) => !t.free && !paid;
+fetch('/api/me', { credentials: 'same-origin' })
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+  .then((me) => { paid = !!me.paid; renderList(); })
+  .catch((e) => console.warn('有料版の状態を確かめられませんでした', e));
+
+// ================= 一覧と詳しいページ =================
+const renderList = () => {
+  $('list').innerHTML = TECHS.map((t, i) => {
+    const rec = techRec(t.id);
+    return `<button type="button" class="tq${rec?.ok ? ' done' : ''}" data-t="${t.id}"><span class="n">${rec?.ok ? '✓' : i + 1}</span><span><b>${esc(t.name)}${locked(t) ? '<span class="lk">PREMIUM</span>' : ''}${t.risk ? '<span class="risk">のどに注意</span>' : ''}</b><small>${esc(t.sub)}${rec ? `・成功 ${rec.ok} / ${rec.tries}回` : ''}</small></span></button>`;
+  }).join('');
+};
+let cur = null;
+// お手本の声（女声 f / 男声 m）。前回の選択を覚えておく
+const VOICE_KEY = 'vocalTrainer_techVoice';
+const demoVoice = () => { try { return localStorage.getItem(VOICE_KEY) === 'm' ? 'm' : 'f'; } catch (err) { return 'f'; } };
+const openTech = (id) => {
+  const t = TECHS.find((x) => x.id === id);
+  if (!t) return;
+  if (locked(t)) { location.href = '/?buy=1'; return; }
+  cur = t;
+  $('listView').hidden = true;
+  $('detailView').hidden = false;
+  const base = loadStore().tech?.base;
+  $('detail').innerHTML = `<h2>${esc(t.name)}</h2>
+    <p>${esc(t.what)}</p>
+    ${t.safety ? `<p class="safety"><b>注意</b>　${esc(t.safety)}</p>` : ''}
+    <h3>お手本</h3>
+    <div class="demo"><div class="vsw" role="group" aria-label="お手本の声">${[['f', '女声'], ['m', '男声']].map(([v, l]) => `<button type="button" data-voice="${v}" aria-pressed="${v === demoVoice()}">${l}</button>`).join('')}</div><audio controls preload="none"></audio><span class="none" id="demoNone" hidden>この声のお手本は準備中です。</span></div>
+    <h3>練習のしかた</h3>
+    <ol class="steps">${t.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+    <h3>判定（${t.sec}秒）</h3>
+    <p class="note">めやす：${esc(t.target)}</p>
+    <div class="take">
+      <div class="row">
+        <button type="button" class="gold" id="takeBtn">● ${t.sec}秒録って判定する</button>
+        ${t.base ? `<button type="button" class="ghost" id="baseBtn">基準の声を録る（${base ? '録り直す' : 'ふつうの声で「あー」'}）</button>` : ''}
+        <span class="note" id="micSt"></span>
+      </div>
+      <div class="count" id="count"></div>
+      <div class="live"><b id="livePitch">—</b><div class="lv"><i id="liveLv"></i></div></div>
+      <div id="result"></div>
+    </div>`;
+  const au = $('detail').querySelector('audio');
+  au.addEventListener('error', () => { au.hidden = true; $('demoNone').hidden = false; });
+  const setDemo = (v) => {
+    au.pause();
+    au.hidden = false;
+    $('demoNone').hidden = true;
+    au.src = `../audio/tech/${t.id}-${v}.mp3?v=1`;
+    $('detail').querySelectorAll('[data-voice]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.voice === v)));
+  };
+  $('detail').querySelector('.vsw').addEventListener('click', (e) => {
+    const b = e.target instanceof Element ? e.target.closest('[data-voice]') : null;
+    if (!b) return;
+    try { localStorage.setItem(VOICE_KEY, b.dataset.voice); } catch (err) { console.warn('お手本の声の選択を保存できませんでした', err); }
+    setDemo(b.dataset.voice);
+  });
+  setDemo(demoVoice());
+  $('takeBtn').addEventListener('click', () => take(false));
+  if (t.base) $('baseBtn').addEventListener('click', () => take(true));
+  window.scrollTo(0, 0);
+};
+$('backBtn').addEventListener('click', () => { stopLive(); $('detailView').hidden = true; $('listView').hidden = false; renderList(); });
+document.addEventListener('click', (e) => { const b = e.target instanceof Element ? e.target.closest('[data-t]') : null; if (b) openTech(b.dataset.t); });
+
+// ================= マイクと録音 =================
+let ctx = null;
+let mic = null; // { stream, src, an, buf }
+let liveTimer = 0;
+const startMic = async () => {
+  if (mic) return true;
+  if (!navigator.mediaDevices?.getUserMedia) { $('micSt').textContent = 'このブラウザではマイクを使えません。'; return false; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    const an = ctx.createAnalyser();
+    an.fftSize = 4096;
+    src.connect(an);
+    mic = { stream, src, an, buf: new Float32Array(4096) };
+    return true;
+  } catch (e) {
+    console.warn('マイクを使えませんでした', e);
+    $('micSt').textContent = e && e.name === 'NotAllowedError' ? 'マイクが許可されていません。アドレスバーの鍵のマークから許可してください。' : 'マイクを使えませんでした。';
+    return false;
+  }
+};
+const startLive = () => {
+  if (liveTimer) return;
+  liveTimer = setInterval(() => {
+    if (!mic || !$('livePitch')) return;
+    mic.an.getFloatTimeDomainData(mic.buf);
+    const r = rmsOf(mic.buf);
+    $('liveLv').style.width = `${clamp((db(r * r) + 60) / 60, 0, 1) * 100}%`;
+    const p = r > 0.006 ? yin(halve(mic.buf), ctx.sampleRate / 2) : { f0: 0 };
+    $('livePitch').textContent = p.f0 ? noteName(hzToMidi(p.f0)) : '—';
+  }, 40);
+};
+const stopLive = () => { clearInterval(liveTimer); liveTimer = 0; };
+// sec 秒ぶんの声をそのまま集める（ScriptProcessor。マイクの音は外に出さない）
+const record = (sec) => new Promise((resolve) => {
+  const sp = ctx.createScriptProcessor(4096, 1, 1);
+  const sink = ctx.createGain();
+  sink.gain.value = 0;
+  const chunks = [];
+  let n = 0;
+  const need = Math.round(sec * ctx.sampleRate);
+  sp.onaudioprocess = (e) => {
+    const d = e.inputBuffer.getChannelData(0);
+    chunks.push(new Float32Array(d));
+    n += d.length;
+    if (n >= need) {
+      sp.disconnect();
+      mic.src.disconnect(sp);
+      const out = new Float32Array(n);
+      let o = 0;
+      chunks.forEach((c) => { out.set(c, o); o += c.length; });
+      resolve(out.subarray(0, need));
+    }
+  };
+  mic.src.connect(sp);
+  sp.connect(sink).connect(ctx.destination);
+});
+let busy = false;
+const take = async (isBase) => {
+  if (busy || !cur) return;
+  if (!(await startMic())) return;
+  busy = true;
+  startLive();
+  $('result').innerHTML = '';
+  $('micSt').textContent = '';
+  for (const k of [3, 2, 1]) { $('count').textContent = k; await new Promise((r) => setTimeout(r, 650)); }
+  $('count').textContent = isBase ? 'ふつうの声で「あー」' : '🎤 どうぞ';
+  const t = cur;
+  const x = await record(isBase ? 3 : t.sec);
+  $('count').textContent = '';
+  const a = analyzeTake(x, ctx.sampleRate);
+  busy = false;
+  if (a.loudSec < 0.8) { $('result').innerHTML = '<div class="res ng"><h4>声が聞こえませんでした</h4><p class="tip">マイクに近づいて、もう一度。</p></div>'; return; }
+  if (isBase) {
+    saveTech('base', { ok: true, date: Date.now(), base: { ring: a.ring, cent: a.cent, level: a.level } });
+    $('result').innerHTML = `<div class="res ok"><h4>基準の声を録りました</h4><p class="tip">2〜4kHz の響き ${fmt(a.ring, 1, 'dB')}・明るさ ${fmt(a.cent, 0, 'Hz')}。次は「${t.sec}秒録って判定する」でベルティングを。</p></div>`;
+    $('baseBtn').textContent = '基準の声を録る（録り直す）';
+    return;
+  }
+  const base = loadStore().tech?.base;
+  const rows = t.judge(a, base);
+  const ok = rows.every((r) => r[2]);
+  saveTech(t.id, { ok, date: Date.now() });
+  const tip = t.tip(a, base);
+  $('result').innerHTML = `<div class="res ${ok ? 'ok' : 'ng'}"><h4>${ok ? 'できています' : 'もう少し'}</h4>
+    <table>${rows.map(([k, v, g]) => `<tr><td>${esc(k)}</td><td class="v ${g ? 'ok' : 'ng'}">${esc(v)} ${g ? '○' : '×'}</td></tr>`).join('')}</table>
+    ${tip ? `<p class="tip">${esc(tip)}</p>` : ''}</div>`;
+};
+
+renderList();
+</script>
+<script src="https://feedback.habatakijuku.com/feedback.js" defer></script>
+</body>
+</html>
