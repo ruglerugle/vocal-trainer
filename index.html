@@ -528,6 +528,7 @@ body[data-mode="song"] #score svg { max-width: none; }
         <div class="kb-note pc-only">Enter でスタート、R でもう一度聞く、Esc でやめる</div>
       </div>
       <div id="cue" class="cue" aria-live="polite"></div>
+      <div id="assessBanner" hidden></div>
       <div id="prompt" class="prompt" aria-live="polite"></div>
       <div class="sheet" id="sheetBox"><div id="score" role="img" aria-label="楽譜"></div></div>
       <div class="meter" aria-hidden="true">
@@ -778,6 +779,7 @@ body[data-mode="song"] #score svg { max-width: none; }
 
 <script src="songs.js?v=1"></script>
 <script src="timing.js?v=1"></script>
+<script src="assess.js?v=1"></script>
 <script src="record-sync.js?v=1"></script>
 <script src="billing.js?v=2"></script>
 <script>
@@ -1533,6 +1535,7 @@ const songLane = () => {
 // キャラクター（img/chara/*.svg、design/gen_chara.py で描く）
 const charaImg = (name, cls) => `<img class="chara ${cls}" src="/img/chara/${name}.svg?v=2" alt="" width="60" height="54">`;
 const renderHome = () => {
+  setTimeout(renderAssessTile);
   const isSong = store.last.mode === 'song' && !!STAGES.song[store.last.stage];
   const lm = isSong || MODES.includes(store.last.mode) ? store.last.mode : 'match';
   const nx = nextStageOf(lm);
@@ -1572,6 +1575,7 @@ const renderHome = () => {
   }).join('') + songLane();
   $('premiumBanner').hidden = !(BILLING_ON && !account.paid);
   $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile${isLocked(m, FREE) ? ' locked' : ''}" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
+    + '<button type="button" class="tile" data-assess><span class="ic" style="background:#fff1d6">🎯</span><span><b>実力テスト</b><small id="assessLast">約3分。音合わせ6問と音程12問で、音程の正確さとレベル1〜10を測ります（無料）</small></span></button>'
     + '<button type="button" class="tile" data-range><span class="ic" style="background:#fbe5ef">🎤</span><span><b>声域を測る</b><small>いちばん低い声と高い声を歌って、練習の音域を決める</small></span></button>'
     + `<a class="tile${BILLING_ON && !account.paid ? ' locked' : ''}" href="/analyzer/" style="text-decoration:none;color:inherit"><span class="ic" style="background:#e8eef6">📈</span><span><b>声の分析</b><small>波形・倍音・ビブラートを見て、理想のアーティストの声と比べる</small></span></a>`
     + '<button type="button" class="tile" data-open="helpDlg"><span class="ic" style="background:#e8eef6">📖</span><span><b>音程と楽譜の見方</b><small>音程の名前・ト音記号とヘ音記号・セント</small></span></button>';
@@ -1676,6 +1680,115 @@ const setRunningUI = (running) => {
   $('result').hidden = true;
 };
 
+// ---- 実力テスト：①声域（測るか、いまの設定のまま）②音合わせ6問 ③音程12問（だんだん難しく）----
+const ASSESS_MATCH = 6;
+const ASSESS_IV = 12;
+const ASSESS_LEVELS = [
+  null,
+  { ivs: [2], dirs: [1], tags: ['2・3度'], text: '長2度（ド→レ）を上へ歌えます' },
+  { ivs: [1, 2], dirs: [1], tags: ['2・3度'], text: '半音と全音（短2度・長2度）を歌い分けられます' },
+  { ivs: [3, 4], dirs: [1], tags: ['2・3度'], text: '3度（明るい・暗い）を上へ歌えます' },
+  { ivs: [1, 2, 3, 4], dirs: [-1], tags: ['2・3度', '下へ'], text: '2度・3度を下へも歌えます' },
+  { ivs: [5, 7], dirs: [1], tags: ['4・5度'], text: '完全4度・完全5度を上へ歌えます' },
+  { ivs: [5, 7], dirs: [-1], tags: ['4・5度', '下へ'], text: '4度・5度を下へも歌えます' },
+  { ivs: [8, 9, 12], dirs: [1], tags: ['6度・オクターブ'], text: '6度やオクターブの大きな跳躍を上へ歌えます' },
+  { ivs: [8, 9, 12], dirs: [-1], tags: ['6度・オクターブ', '下へ'], text: '大きな跳躍を下へも歌えます' },
+  { ivs: [6, 10, 11], dirs: [1, -1], tags: ['7度・増4度'], text: '増4度や7度のむずかしい音程まで歌えます' },
+  { ivs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], dirs: [1, -1], tol: 20, tags: ['ぴったり'], text: 'どの音程も、±20セントの精度で歌えます' },
+];
+const ASSESS_TAGS = ['2・3度', '4・5度', '6度・オクターブ', '7度・増4度', '下へ', 'ぴったり'];
+// 結果のレベル → 練習するとよい「音程の道」のステージ（0から数える。次に越えるレベルの中身）
+const ASSESS_REC = [0, 0, 1, 5, 2, 6, 4, 6, 7, 7, 7];
+let afterRange = null;
+const renderAssessTile = () => {
+  const el = $('assessLast');
+  const last = Assess.last(store.assess);
+  if (el && last) el.textContent = `前回 レベル${last.level}（${last.date}）。約3分でもう一度測れます（無料）`;
+};
+// はじめに：声域を測るか、いまの声域のまま始めるか
+const startAssess = () => {
+  openPlay('match', 0);
+  stopRun(false);
+  $('stageInfo').innerHTML = `<b>実力テスト（約3分）</b>①音合わせ6問（鳴った音と同じ高さ）で音程の正確さを、②音程12問（だんだん難しく）でレベル1〜10を測ります。テスト中の「答えを聞く」は正解に数えません。<br><span class="rule">いまの声域 ${rangeText()}（${voiceName()}）</span>
+    <div class="controls" style="margin-top:10px"><button type="button" class="gold" data-assess-go="now">この声域で始める</button><button type="button" class="ghost" data-assess-go="range">声域を測ってから始める</button></div>`;
+};
+const beginAssess = async () => {
+  ensureAudio();
+  stopRun(false);
+  $('result').hidden = true;
+  if (!(await startMic())) {
+    $('micWarn').hidden = false;
+    $('micWarn').textContent = $('micStatus').title.replace('：', '。');
+    return;
+  }
+  $('micWarn').hidden = true;
+  mode = 'match';
+  stageIdx = FREE;
+  applyModeVisibility();
+  run = {
+    kind: 'flash', mode: 'match', stage: FREE, items: freeItems('match'), results: [], combo: 0, maxCombo: 0, q: null, prevKey: null, prev: null,
+    locked: false, tol: S().tol, leap: 0, refOnce: false, ref: refC(),
+    assess: { phase: 'match', n: 0, ok: 0, cents: [], st: Assess.staircase({ items: ASSESS_IV, start: 3 }), cfg: null },
+  };
+  setRunningUI(true);
+  $('playTitle').textContent = 'ヴォーカルの実力テスト';
+  nextQuestion();
+};
+// 次の問題の前に：音合わせが終わったら音程へ。音程はレベルに合わせて出題を変える。false なら出題しない
+const assessNext = () => {
+  const a = run.assess;
+  if (a.phase === 'match' && a.n >= ASSESS_MATCH) {
+    a.phase = 'interval';
+    mode = 'interval';
+    run.mode = 'interval';
+    applyModeVisibility();
+    setRunningUI(true);
+  }
+  if (a.phase === 'interval') {
+    if (a.st.done) { finishAssess(); return false; }
+    a.cfg = ASSESS_LEVELS[a.st.level];
+    run.items = itemsFor('interval', a.cfg);
+    run.tol = a.cfg.tol ?? S().tol;
+  }
+  const done = a.phase === 'match' ? a.n : ASSESS_MATCH + a.st.count;
+  Assess.banner($('assessBanner'), { count: done, items: ASSESS_MATCH + ASSESS_IV, onQuit: () => { $('assessBanner').hidden = true; stopRun(); } });
+  $('assessBanner').hidden = false;
+  return true;
+};
+const assessRecord = (ok, cents) => {
+  const a = run.assess;
+  if (a.phase === 'match') {
+    a.n += 1;
+    if (ok) { a.ok += 1; if (cents != null) a.cents.push(cents); }
+  } else a.st.record(ok, a.cfg.tags);
+};
+const finishAssess = () => {
+  const a = run.assess;
+  stopRun(false);
+  $('assessBanner').hidden = true;
+  const level = a.st.result();
+  const prev = Assess.last(store.assess);
+  const parts = a.st.parts();
+  const matchC = a.cents.length ? Math.round(mean(a.cents)) : null;
+  store.assess = Assess.push(store.assess, { level, parts, match: { ok: a.ok, n: a.n, cents: matchC }, lo: S().lo, hi: S().hi });
+  saveStore();
+  renderAssessTile();
+  const si = Math.min(ASSESS_REC[level], STAGES.interval.length - 1);
+  Assess.show({
+    title: 'ヴォーカルの実力テスト', level, levelText: ASSESS_LEVELS[level].text, prev,
+    parts: [{ label: '音合わせ', ok: a.ok, n: a.n }, ...ASSESS_TAGS.filter((t) => parts[t]).map((t) => ({ label: t, ...parts[t] }))],
+    note: `音合わせ：${a.ok} / ${a.n}問${matchC != null ? `・平均のずれ ±${matchC}セント（${matchC <= 10 ? 'とても正確' : matchC <= 20 ? '正確' : matchC <= 30 ? 'ふつう' : '練習しがいがあります'}）` : ''}。声域 ${rangeText()}`,
+    recommend: { label: `おすすめ：音程の道 ステージ${si + 1}「${STAGES.interval[si].short}」を練習する`, run: () => openPlay('interval', si) },
+  });
+};
+document.addEventListener('click', (e) => {
+  const t = e.target instanceof Element ? e.target.closest('[data-assess], [data-assess-go]') : null;
+  if (!t) return;
+  if (t.dataset.assessGo === 'now') beginAssess();
+  else if (t.dataset.assessGo === 'range') { afterRange = () => { openPlay('match', 0); beginAssess(); }; openRange(); }
+  else if (t.hasAttribute('data-assess')) startAssess();
+});
+
 // ---- 1問ずつのモード（音合わせ・音程・五線譜）----
 const startFlash = () => {
   const st = stageOf();
@@ -1686,6 +1799,7 @@ const startFlash = () => {
 };
 const nextQuestion = () => {
   if (!run) return;
+  if (run.assess && !assessNext()) return;
   const { lo, hi } = S();
   let it;
   let base = null;
@@ -1772,6 +1886,7 @@ const flashCorrect = () => {
   q.revealed = true;
   recordItem(mode, q.key, ok, ms);
   run.results.push({ ok, t: ms, c: ok ? avgC : null });
+  if (run.assess) assessRecord(ok && (run.assess.phase === 'match' || ms <= LIMIT.interval), avgC);
   if (ok) { run.combo++; run.maxCombo = Math.max(run.maxCombo, run.combo); } else run.combo = 0;
   const sec = (ms / 1000).toFixed(1);
   const great = ok && avgC <= run.tol / 3;
@@ -1792,6 +1907,7 @@ const timeoutQuestion = () => {
   run.combo = 0;
   recordItem(mode, q.key, false, 0);
   run.results.push({ ok: false, t: LIMIT[mode] * 2, c: null });
+  if (run.assess) assessRecord(false, null);
   popJudge('時間切れ', 'miss');
   setFeedback(`答えは ${noteLabel(q.target, q.flat)}（いま鳴らします）`, 'good');
   setCue('♪ 答えの音', 'listen');
@@ -2395,7 +2511,8 @@ const startRun = async () => {
 const stopRun = (showIdle = true) => {
   if (showIdle && run && run.kind === 'song' && run.loop && run.scores.length) { clearTimers(); finishSong(); return; }
   clearTimers();
-  const wasFree = run && run.stage === FREE && run.kind === 'flash' && run.results.length;
+  const wasFree = run && !run.assess && run.stage === FREE && run.kind === 'flash' && run.results.length;
+  if (run?.assess) $('assessBanner').hidden = true;
   const r = run;
   run = null;
   setRunningUI(false);
@@ -2539,12 +2656,15 @@ $('rgNext').addEventListener('click', () => {
   S().onboarded = true;
   saveStore();
   syncSettingsUI();
+  const after = afterRange;
+  afterRange = null;
   $('rangeDlg').close();
+  if (after) after();
   renderHome();
   if (view === 'play' && !run) { renderStageInfo(); renderIdle(); }
 });
 $('rgRetry').addEventListener('click', () => { Object.assign(rg, { step: 'low', low: null, high: null }); renderRange(); });
-$('rangeDlg').addEventListener('close', () => { rg.active = false; });
+$('rangeDlg').addEventListener('close', () => { rg.active = false; afterRange = null; });
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || document.querySelector('dialog[open]') || view !== 'play') return;
