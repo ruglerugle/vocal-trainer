@@ -336,7 +336,7 @@ const openTech = (id) => {
     au.pause();
     au.hidden = false;
     $('demoNone').hidden = true;
-    au.src = `../audio/tech/${t.id}-${v}.mp3?v=1`;
+    au.src = `../audio/tech/${t.id}-${v}.mp3?v=2`;
     $('detail').querySelectorAll('[data-voice]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.voice === v)));
   };
   $('detail').querySelector('.vsw').addEventListener('click', (e) => {
