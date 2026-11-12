@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-app="vocal">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23c2367a'/%3E%3Crect x='15' y='7' width='10' height='17' rx='5' fill='%23fff'/%3E%3Cpath d='M11 19a9 9 0 0 0 18 0M20 28v5M15 33h10' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #fbf2f6; --paper: #fff; --ink: #2d1622; --muted: #7a5d6b; --line: #f0dce6;
@@ -86,6 +86,22 @@ table.cmp .ar { color: #0f7f93; font-weight: 700; }
 .gate ul { text-align: left; display: inline-block; margin: 8px 0 16px; }
 .busy { font-size: .9rem; color: var(--muted); }
 footer { text-align: center; font-size: .8rem; color: var(--muted); padding: 10px 16px 40px; }
+</style>
+<link rel="stylesheet" href="../studio.css?v=1">
+<style>
+/* スタジオの見た目に合わせた、このページだけの調整 */
+:root { --p-ink: var(--ink); --p-muted: var(--muted); }
+.viz canvas, .overview { background: #08080a !important; }
+.warn { background: rgba(201, 169, 110, .08); color: var(--ink); box-shadow: 0 0 0 1px rgba(201, 169, 110, .3) inset; }
+.clip { background: var(--panel2); }
+.clip.on { box-shadow: 0 0 0 1px var(--gold) inset; }
+.dark { background: #0b0b0d; box-shadow: 0 0 0 1px var(--line) inset; }
+.viz, .m, .band { background: var(--paper); }
+.topbar h1 { font-weight: 400; letter-spacing: .1em; }
+label .pick { display: inline-block; padding: 9px 18px; border-radius: 999px; box-shadow: 0 0 0 1px var(--line) inset; cursor: pointer; letter-spacing: .08em; }
+button.rec { background: transparent; color: var(--ng); box-shadow: 0 0 0 1px var(--ng) inset; }
+table.cmp th, table.cmp td { border-color: var(--line); }
+table.cmp .me { color: var(--accent); } table.cmp .ar { color: #5ad1e6; }
 </style>
 </head>
 <body>
