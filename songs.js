@@ -10,11 +10,11 @@ const SONGS = [
     "time": "4/4",
     "tempo": 96,
     "mel": [
-      "e4/q d4/q c4/q d4/q",
+      "e4/q. d4/8 c4/q d4/q",
       "e4/q e4/q e4/h",
       "d4/q d4/q d4/h",
       "e4/q g4/q g4/h",
-      "e4/q d4/q c4/q d4/q",
+      "e4/q. d4/8 c4/q d4/q",
       "e4/q e4/q e4/q e4/q",
       "d4/q d4/q e4/q d4/q",
       "c4/w"
