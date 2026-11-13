@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>歌の採譜 管理画面</title>
+<style>
+:root { --bg: #111114; --panel: #1b1b20; --line: #2c2c33; --text: #ece8e1; --muted: #9a958d; --gold: #e0b45a; --pink: #ff7ab8; --green: #4ade80; --red: #f87171; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 "Noto Sans JP", system-ui, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 18px 14px 60px; display: grid; gap: 14px; }
+h1 { margin: 0; font-size: 1.3rem; }
+h2 { margin: 0 0 8px; font-size: 1.05rem; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.note { color: var(--muted); font-size: .86rem; margin: 6px 0 0; }
+button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; background: #2c2c33; color: var(--text); }
+button:hover:not(:disabled) { background: #3a3a43; }
+button.gold { background: var(--gold); color: #2a1d00; }
+button.rec { background: var(--red); color: #2a0000; font-size: 1.05rem; padding: 12px 20px; }
+button.small { padding: 6px 10px; font-size: .85rem; }
+button:disabled { opacity: .45; cursor: default; }
+select, textarea, input { font: inherit; background: #101013; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+input[type=range] { padding: 0; }
+textarea { width: 100%; min-height: 90px; }
+label { display: inline-flex; gap: 6px; align-items: center; }
+a { color: var(--gold); }
+.big { font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 4ch; }
+.meter { height: 10px; width: 200px; max-width: 60vw; background: #0c0c0e; border-radius: 6px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--green); }
+.list { display: grid; gap: 6px; margin-top: 8px; }
+.item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: #141418; }
+.item.sel { outline: 2px solid var(--gold); }
+.item .name { flex: 1; min-width: 12em; font-size: .9rem; }
+.item .name small { color: var(--muted); }
+.roll { overflow-x: auto; background: #0b0b0d; border-radius: 10px; border: 1px solid var(--line); }
+#roll { display: block; height: 300px; }
+.msg { min-height: 1.4em; font-weight: 700; }
+.msg.err { color: var(--red); }
+.msg.ok { color: var(--green); }
+.score { font-family: ui-monospace, monospace; font-size: .8rem; white-space: pre; overflow-x: auto; background: #0b0b0d; padding: 10px; border-radius: 10px; max-height: 260px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>歌の採譜 管理画面</h1>
+  <div id="authMsg" class="card msg">確認中…</div>
+
+  <div id="app" hidden>
+    <section class="card">
+      <h2>1. 録音する</h2>
+      <div class="row">
+        <label>曲 <select id="song"></select></label>
+        <label>原曲の歌 <input id="volV" type="range" min="0" max="100" value="100"></label>
+        <label>伴奏 <input id="volB" type="range" min="0" max="100" value="50"></label>
+      </div>
+      <p class="note"><b>イヤホン・ヘッドホンで</b>聞いてください（スピーカーの音がマイクに入ると採譜できません）。歌が始まったら、元の歌に合わせて<b>1音節に1つの「ラ」</b>で、はっきり歌ってください。オクターブ違いでもかまいません。</p>
+      <div class="row" style="margin-top:6px"><label>メモ <input id="memo" type="text" placeholder="例：カラオケ・有線イヤホン" style="width:16em"></label></div>
+      <div class="row" style="margin-top:10px">
+        <button id="recBtn" class="rec" type="button">● 録音する</button>
+        <button id="recStop" type="button" hidden>■ 止めて保存</button>
+        <span class="big" id="clock">0:00</span>
+        <span class="meter" title="マイクの音量"><i id="meter"></i></span>
+      </div>
+      <div id="recMsg" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <h2>2. 録音を選ぶ</h2>
+      <p class="note">「原曲と聞く」で、録音が原曲と合っているかを確かめられます。</p>
+      <div id="recList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>3. 採譜して確かめる</h2>
+      <div class="row">
+        <span>選んだ録音：<b id="selName">（まだありません）</b></span>
+        <label>高さ <select id="shift"><option value="0">歌ったまま</option><option value="12">1オクターブ上げる</option><option value="-12">1オクターブ下げる</option></select></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>タイミングの補正 <input id="offset" type="range" min="-500" max="500" step="10" value="0"> <b id="offsetVal">0ミリ秒</b></label>
+        <button id="autoOff" class="small" type="button">自動で合わせる</button>
+      </div>
+      <p class="note">歌が原曲より遅れて録れているときは＋へ（Bluetooth イヤホンは遅れやすい）。「自動で合わせる」は、録音と元の歌の出だしの並びを比べて補正します。</p>
+      <p class="note">歌詞の音節（空白で区切る。2音節以上の単語は「bor- rowed」のように「-」で分ける）。見つかった「ラ」に順番に当てます。余った「ラ」は ♪ になります。</p>
+      <textarea id="syl"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="trBtn" class="gold" type="button" disabled>採譜する</button>
+        <span id="trMsg" class="msg"></span>
+      </div>
+      <div id="result" hidden>
+        <div class="row" style="margin:12px 0 8px">
+          <button id="playBoth" type="button">▶ 原曲＋採譜の音</button>
+          <button id="playSyn" type="button">▶ 採譜の音だけ</button>
+          <button id="playHum" type="button">▶ 原曲＋自分の録音</button>
+          <button id="playStop" type="button">■ 止める</button>
+          <label>ここから <select id="from"></select></label>
+        </div>
+        <div class="roll"><canvas id="roll"></canvas></div>
+        <p class="note">横＝時間（金の縦線と数字は 6/8 の小節）。棒＝採譜した音符と歌詞、細い線＝録音の声の高さ。</p>
+        <details style="margin-top:8px"><summary>楽譜のデータ（6/8、小節ごと）</summary><div id="scoreTxt" class="score"></div></details>
+        <div class="row" style="margin-top:12px">
+          <button id="adoptBtn" class="gold" type="button">この採譜で決定</button>
+          <span id="adoptMsg" class="msg"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="transcribe.js?v=2"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+// 採譜できる曲（grid：小節1の頭の秒・6/8 の1小節の秒・歌の楽譜の最初と最後の小節）
+const SONGS = [{
+  id: 'hr-leave-the-bill', title: 'Leave the Bill',
+  grid: { bar1: 0.876, barsec: 1.0084, firstBar: 16, lastBar: 54, steps: 12 },
+  vocalFrom: 16, vocalTo: 56,
+  tracks: ['vocal', 'backing', 'guitar', 'bass', 'drums', 'other'],
+  syllables: "You brought a gold watch I brought the bill Your big talk's parked on a bor- rowed hill I count your change while you count your friends That grin gets ex- pen- sive when pay- day ends Hey move it o- ver make room for the truth You talk like a king with a hole in your boot Hey move it o- ver your tab's com- ing due I've got the re- ceipt and I'm look- ing at you",
+}];
+const REC_SR = 16000; // 保存する録音のサンプリング周波数
+const api = async (url, opt = {}) => {
+  const r = await fetch(url, { credentials: 'same-origin', ...opt });
+  const j = await r.json().catch(() => ({ error: `応答を読めませんでした（${r.status}）` }));
+  if (!r.ok) throw new Error(j.error || `エラー（${r.status}）`);
+  return j;
+};
+const post = (url, body) => api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const setMsg = (el, text, cls = '') => { el.textContent = text; el.className = `msg ${cls}`; };
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+let song = SONGS[0];
+let ctx = null;
+const audio = () => { ctx = ctx || new AudioContext({ latencyHint: 'interactive' }); if (ctx.state === 'suspended') ctx.resume(); return ctx; };
+const bufCache = new Map();
+const loadBuf = (url, opt) => {
+  if (!bufCache.has(url)) {
+    bufCache.set(url, fetch(url, opt).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`読めませんでした（${r.status}）`)))).then((b) => audio().decodeAudioData(b)).catch((e) => { bufCache.delete(url); throw e; }));
+  }
+  return bufCache.get(url);
+};
+const stems = () => Promise.all(song.tracks.map((t) => loadBuf(`/audio/songs/${song.id}/${t}.mp3`)));
+const takeUrl = (id) => `/api/admin/hum/audio?id=${id}`;
+
+// ---- 鳴らす ----
+let playing = [];
+let playT0 = 0;
+let raf = 0;
+const stopAll = () => { playing.forEach((n) => { try { n.stop(); } catch (e) { /* もう止まっている */ } }); playing = []; cancelAnimationFrame(raf); drawRoll(); };
+const gainNode = (v) => { const g = audio().createGain(); g.gain.value = v; g.connect(audio().destination); return g; };
+const playMix = async (when, from, gV, gB) => {
+  const bs = await stems();
+  song.tracks.forEach((t, i) => {
+    const s = audio().createBufferSource();
+    s.buffer = bs[i];
+    s.connect(gainNode(t === 'vocal' ? gV : gB));
+    s.start(when, from);
+    playing.push(s);
+  });
+};
+const playSynth = (notes, when, from) => {
+  const c = audio();
+  notes.forEach((n) => {
+    if (n.t1 <= from) return;
+    const a = when + Math.max(0, n.t0 - from);
+    const b = when + (n.t1 - from);
+    const o = c.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 440 * 2 ** ((n.midi - 69) / 12);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, a);
+    g.gain.linearRampToValueAtTime(0.3, a + 0.01);
+    g.gain.setValueAtTime(0.3, Math.max(a + 0.01, b - 0.03));
+    g.gain.linearRampToValueAtTime(0, b);
+    o.connect(g).connect(c.destination);
+    o.start(a);
+    o.stop(b + 0.02);
+    playing.push(o);
+  });
+};
+const startPlay = async (kind, takeId) => {
+  stopAll();
+  const from = Number($('from').value) || 0;
+  try {
+    await stems();
+    const c = audio();
+    const when = c.currentTime + 0.15;
+    const vV = Number($('volV').value) / 100;
+    const vB = Number($('volB').value) / 100;
+    if (kind === 'both') { await playMix(when, from, vV * 0.8, vB * 0.8); playSynth(result.notes, when, from); }
+    if (kind === 'syn') playSynth(result.notes, when, from);
+    if (kind === 'hum') {
+      const hb = await loadBuf(takeUrl(takeId), { credentials: 'same-origin' });
+      await playMix(when, from, vV * 0.7, vB * 0.7);
+      const off = takeId === selected?.id ? Number($('offset').value) / 1000 : 0;
+      const s = c.createBufferSource();
+      s.buffer = hb;
+      s.connect(gainNode(1));
+      const at = from + off;
+      if (at >= 0) s.start(when, at); else s.start(when - at, 0);
+      playing.push(s);
+    }
+    playT0 = when - from;
+    const tick = () => { drawRoll(c.currentTime - playT0); if (playing.length) raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+  } catch (e) { setMsg($('trMsg'), `鳴らせませんでした：${e.message}`, 'err'); }
+};
+
+// ---- 録音（原曲の再生と同じ AudioContext の時計でマイクの音を集め、曲の0秒にそろえる） ----
+const WORKLET = 'class Rec extends AudioWorkletProcessor { process(inputs) { const ch = inputs[0] && inputs[0][0]; if (ch) this.port.postMessage({ f: currentFrame, d: ch.slice(0) }); return true; } } registerProcessor("rec", Rec);';
+let workletReady = null;
+let rec = null;
+const startRec = async () => {
+  stopAll();
+  setMsg($('recMsg'), '準備中…');
+  $('recBtn').disabled = true;
+  try {
+    const c = audio();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    workletReady = workletReady || c.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+    await workletReady;
+    const bs = await stems();
+    const src = c.createMediaStreamSource(stream);
+    const node = new AudioWorkletNode(c, 'rec');
+    const mute = c.createGain();
+    mute.gain.value = 0;
+    src.connect(node).connect(mute).connect(c.destination);
+    const chunks = [];
+    let level = 0;
+    node.port.onmessage = (e) => { chunks.push(e.data); let p = 0; for (const x of e.data.d) p = Math.max(p, Math.abs(x)); level = Math.max(p, level * 0.9); };
+    const dur = Math.max(...bs.map((b) => b.duration));
+    const t0 = c.currentTime + 3.2;
+    await playMix(t0, 0, Number($('volV').value) / 100, Number($('volB').value) / 100);
+    const inLat = stream.getAudioTracks()[0].getSettings().latency || 0.01;
+    const outLat = (c.outputLatency || 0) + (c.baseLatency || 0);
+    rec = { stream, node, src, chunks, t0, dur, inLat, outLat, sr: c.sampleRate, done: false };
+    $('recBtn').hidden = true;
+    $('recStop').hidden = false;
+    const tick = () => {
+      if (!rec || rec.done) return;
+      const t = c.currentTime - t0;
+      $('clock').textContent = t < 0 ? String(Math.ceil(-t)) : fmt(t);
+      $('meter').style.width = `${Math.min(100, level * 140)}%`;
+      setMsg($('recMsg'), t < 0 ? 'もうすぐ始まります…' : t < song.vocalFrom ? `録音中（歌は${song.vocalFrom}秒ごろから）` : '録音中');
+      if (t >= dur + 0.3) { finishRec(); return; }
+      setTimeout(tick, 100); // 画面が隠れても止まらないように（requestAnimationFrame は止まる）
+    };
+    setTimeout(tick, 100);
+  } catch (e) {
+    console.error(e);
+    setMsg($('recMsg'), e.name === 'NotAllowedError' ? 'マイクが許可されていません。アドレスバーの左から、マイクを「許可」にしてください。' : `録音を始められませんでした：${e.message}`, 'err');
+    $('recBtn').disabled = false;
+  }
+};
+// 16kHz に直して 16ビット PCM の base64 にする
+const toPcm16B64 = async (f32, sr) => {
+  const n = Math.round((f32.length * REC_SR) / sr);
+  const off = new OfflineAudioContext(1, n, REC_SR);
+  const b = off.createBuffer(1, f32.length, sr);
+  b.copyToChannel(f32, 0);
+  const s = off.createBufferSource();
+  s.buffer = b;
+  s.connect(off.destination);
+  s.start();
+  const out = (await off.startRendering()).getChannelData(0);
+  const bytes = new Uint8Array(out.length * 2);
+  const v = new DataView(bytes.buffer);
+  for (let i = 0; i < out.length; i++) v.setInt16(i * 2, Math.max(-1, Math.min(1, out[i])) * 0x7fff, true);
+  let s2 = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s2 += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s2);
+};
+const finishRec = async () => {
+  if (!rec || rec.done) return;
+  rec.done = true;
+  stopAll();
+  rec.stream.getTracks().forEach((t) => t.stop());
+  rec.src.disconnect();
+  rec.node.disconnect();
+  $('recStop').hidden = true;
+  $('recBtn').hidden = false;
+  $('recBtn').disabled = false;
+  // 曲の t 秒の声は、時計の t0 + t + 出力の遅れ + 入力の遅れ に録られる
+  const lat = rec.outLat + rec.inLat;
+  const start = Math.round((rec.t0 + lat) * rec.sr);
+  const last = rec.chunks.length ? rec.chunks[rec.chunks.length - 1].f + 128 : start;
+  const n = Math.max(0, last - start);
+  const out = new Float32Array(n);
+  rec.chunks.forEach((ch) => { for (let i = 0; i < ch.d.length; i++) { const k = ch.f + i - start; if (k >= 0 && k < n) out[k] = ch.d[i]; } });
+  let peak = 0;
+  for (const x of out) peak = Math.max(peak, Math.abs(x));
+  const r0 = rec;
+  rec = null;
+  if (n < r0.sr * 5) { setMsg($('recMsg'), '短すぎるので保存しませんでした。', 'err'); return; }
+  setMsg($('recMsg'), '保存中…');
+  try {
+    const data = await toPcm16B64(out, r0.sr);
+    const j = await post('/api/admin/hum', { song: song.id, sampleRate: REC_SR, latencyMs: Math.round(lat * 1000), note: $('memo').value.trim(), data });
+    const warn = peak < 0.05 ? '　※声がとても小さいです。マイクに近づいて録り直すと、うまく採譜できます。' : peak > 0.98 ? '　※音が割れています。マイクから少し離れて録り直してください。' : '';
+    setMsg($('recMsg'), `保存しました（${fmt(n / r0.sr)}・遅れの補正 ${Math.round(lat * 1000)}ミリ秒）${warn}`, warn ? 'err' : 'ok');
+    selected = j.take;
+    await refreshList();
+  } catch (e) { setMsg($('recMsg'), `保存できませんでした：${e.message}`, 'err'); }
+};
+$('recBtn').addEventListener('click', startRec);
+$('recStop').addEventListener('click', finishRec);
+
+// ---- 録音の一覧 ----
+let selected = null;
+let takes = [];
+const when = (s) => new Date(s * 1000).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const refreshList = async () => {
+  takes = (await api(`/api/admin/hum?song=${song.id}`)).takes;
+  if (selected && !takes.some((t) => t.id === selected.id)) selected = null;
+  if (!selected && takes.length) selected = takes[0];
+  $('recList').innerHTML = takes.length ? '' : '<p class="note">まだ録音がありません。</p>';
+  takes.forEach((t) => {
+    const d = document.createElement('div');
+    d.className = `item${t.id === selected?.id ? ' sel' : ''}`;
+    d.innerHTML = '<span class="name"></span><button class="small" type="button" data-a="hum">▶ 原曲と聞く</button><button class="small" type="button" data-a="sel">これを使う</button><button class="small" type="button" data-a="del">消す</button>';
+    d.querySelector('.name').innerHTML = `${when(t.created_at)}　${fmt(t.samples / t.sample_rate)}<br><small></small>`;
+    d.querySelector('small').textContent = `#${t.id}${t.note ? `・${t.note}` : ''}${adoptedTake === t.id ? '・決定済み' : ''}`;
+    d.querySelector('[data-a=hum]').addEventListener('click', () => { if (!$('from').value) $('from').value = '15'; startPlay('hum', t.id); });
+    d.querySelector('[data-a=sel]').addEventListener('click', () => { selected = t; updateSel(); });
+    d.querySelector('[data-a=del]').addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'もう一度押すと消す'; return; }
+      try { await post('/api/admin/hum/delete', { id: t.id }); await refreshList(); } catch (err) { setMsg($('recMsg'), `消せませんでした：${err.message}`, 'err'); }
+    });
+    $('recList').appendChild(d);
+  });
+  updateSel();
+};
+const updateSel = () => {
+  $('selName').textContent = selected ? `${when(selected.created_at)}（#${selected.id}）` : '（まだありません）';
+  $('trBtn').disabled = !selected;
+  [...$('recList').children].forEach((el, i) => el.classList.toggle('sel', takes[i]?.id === selected?.id));
+};
+
+// ---- 採譜 ----
+let result = null;
+let humCache = { id: null, x: null, sr: 0 };
+const humSamples = async (take) => {
+  if (humCache.id === take.id) return humCache;
+  const b = await loadBuf(takeUrl(take.id), { credentials: 'same-origin' });
+  // decodeAudioData は端末の周波数に直すので、16kHz に戻してから計算する（速い）
+  const n = Math.round(b.duration * REC_SR);
+  const off = new OfflineAudioContext(1, n, REC_SR);
+  const s = off.createBufferSource();
+  s.buffer = b;
+  s.connect(off.destination);
+  s.start();
+  const x = (await off.startRendering()).getChannelData(0);
+  humCache = { id: take.id, x, sr: REC_SR };
+  return humCache;
+};
+const refSamples = async () => {
+  const b = (await stems())[0];
+  const n = Math.round(b.duration * REC_SR);
+  const off = new OfflineAudioContext(1, n, REC_SR);
+  const s = off.createBufferSource();
+  s.buffer = b;
+  s.connect(off.destination);
+  s.start();
+  return (await off.startRendering()).getChannelData(0);
+};
+$('offset').addEventListener('input', () => { $('offsetVal').textContent = `${$('offset').value}ミリ秒`; });
+$('autoOff').addEventListener('click', async () => {
+  if (!selected) return;
+  setMsg($('trMsg'), 'ずれを測っています…');
+  try {
+    const { x } = await humSamples(selected);
+    const lag = HumTranscribe.findLag(x, await refSamples(), REC_SR, song.vocalFrom, song.vocalTo);
+    $('offset').value = String(Math.round(lag * 1000));
+    $('offsetVal').textContent = `${$('offset').value}ミリ秒`;
+    setMsg($('trMsg'), `録音は原曲より ${Math.round(lag * 1000)}ミリ秒${lag >= 0 ? '遅れて' : '早く'}います。補正しました。もう一度「採譜する」を押してください。`, 'ok');
+  } catch (e) { setMsg($('trMsg'), `測れませんでした：${e.message}`, 'err'); }
+});
+const params = () => ({ shift: Number($('shift').value), offsetMs: Number($('offset').value), syllables: $('syl').value.trim().split(/\s+/).filter(Boolean) });
+$('trBtn').addEventListener('click', async () => {
+  stopAll();
+  setMsg($('trMsg'), '採譜中…');
+  $('trBtn').disabled = true;
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const { x, sr } = await humSamples(selected);
+    const p = params();
+    result = { ...HumTranscribe.run(x, sr, { ...p, grid: song.grid }), takeId: selected.id, ...p };
+    const s = result;
+    const k = s.sylCount;
+    setMsg($('trMsg'), `「ラ」を ${s.found}個 見つけました（歌詞の音節 ${k}）${s.found === k ? '' : s.found > k ? `。多い ${s.found - k}個は ♪ になります` : `。足りない ${k - s.found}音節は楽譜に入りません`}`, s.found >= k ? 'ok' : 'err');
+    $('result').hidden = false;
+    $('scoreTxt').textContent = s.mel.map((m, i) => `小節${String(s.firstBar + i).padStart(2)}  ${m.padEnd(44)}  ${s.lyrics[i]}`).join('\n');
+    drawRoll();
+  } catch (e) {
+    console.error(e);
+    setMsg($('trMsg'), `採譜できませんでした：${e.message}`, 'err');
+  } finally { $('trBtn').disabled = false; }
+});
+$('playBoth').addEventListener('click', () => startPlay('both'));
+$('playSyn').addEventListener('click', () => startPlay('syn'));
+$('playHum').addEventListener('click', () => startPlay('hum', result?.takeId));
+$('playStop').addEventListener('click', stopAll);
+let adoptedTake = null;
+$('adoptBtn').addEventListener('click', async () => {
+  if (!result) return;
+  setMsg($('adoptMsg'), '保存中…');
+  try {
+    const { firstBar, mel, lyrics, notes, line, shift, offsetMs, syllables, takeId } = result;
+    await post('/api/admin/hum/adopt', { song: song.id, takeId, value: { firstBar, mel, lyrics, notes, line, shift, offsetMs, syllables: syllables.join(' ') } });
+    adoptedTake = takeId;
+    setMsg($('adoptMsg'), '決定しました。Claude に「決定した」と伝えてください（公開は Claude がします）。', 'ok');
+    refreshList();
+  } catch (e) { setMsg($('adoptMsg'), `保存できませんでした：${e.message}`, 'err'); }
+});
+
+// ---- 採譜の図 ----
+const PX = 90;
+const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+function drawRoll(now = null) {
+  const cv = $('roll');
+  if (!result) return;
+  const g0 = song.grid;
+  const T0 = g0.bar1 + (g0.firstBar - 2) * g0.barsec;
+  const T1 = g0.bar1 + g0.lastBar * g0.barsec + 0.5;
+  const notes = result.notes;
+  const ms = notes.map((n) => n.midi);
+  const lo = (ms.length ? Math.min(...ms) : 55) - 3;
+  const hi = (ms.length ? Math.max(...ms) : 75) + 3;
+  const w = Math.round((T1 - T0) * PX);
+  const h = 300;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== w * dpr) { cv.width = w * dpr; cv.height = h * dpr; cv.style.width = `${w}px`; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const x = (t) => (t - T0) * PX;
+  const y = (m) => h - 18 - ((m - lo) / (hi - lo)) * (h - 30);
+  g.font = '11px sans-serif';
+  for (let m = Math.ceil(lo); m <= hi; m++) {
+    g.strokeStyle = [1, 3, 6, 8, 10].includes(m % 12) ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.08)';
+    g.beginPath(); g.moveTo(0, y(m)); g.lineTo(w, y(m)); g.stroke();
+  }
+  for (let b = g0.firstBar - 1; b <= g0.lastBar + 1; b++) {
+    const t = g0.bar1 + (b - 1) * g0.barsec;
+    g.strokeStyle = 'rgba(224,180,90,.35)';
+    g.beginPath(); g.moveTo(x(t), 0); g.lineTo(x(t), h); g.stroke();
+    g.fillStyle = 'rgba(224,180,90,.8)';
+    g.fillText(String(b), x(t) + 3, 11);
+  }
+  const ct = result.contour;
+  g.strokeStyle = 'rgba(255,255,255,.35)';
+  g.lineWidth = 1.2;
+  g.beginPath();
+  let pen = false;
+  ct.midi.forEach((m, i) => {
+    const t = i / ct.rate - result.contourOffset;
+    if (m == null || t < T0 || t > T1) { pen = false; return; }
+    const yy = y(m + result.shift);
+    if (pen) g.lineTo(x(t), yy); else g.moveTo(x(t), yy);
+    pen = true;
+  });
+  g.stroke();
+  notes.forEach((n) => {
+    g.fillStyle = n.text === '♪' ? 'rgba(160,160,170,.8)' : 'rgba(255,122,184,.9)';
+    g.fillRect(x(n.t0), y(n.midi) - 4, Math.max(3, x(n.t1) - x(n.t0)), 8);
+    g.fillStyle = '#fff';
+    g.fillText(n.text, x(n.t0), y(n.midi) - 8);
+    g.fillStyle = 'rgba(255,255,255,.5)';
+    g.fillText(NAMES[((n.midi % 12) + 12) % 12] + (Math.floor(n.midi / 12) - 1), x(n.t0), y(n.midi) + 16);
+  });
+  if (now != null) {
+    g.strokeStyle = '#4ade80';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x(now), 0); g.lineTo(x(now), h); g.stroke();
+    const box = cv.parentElement;
+    if (x(now) > box.scrollLeft + box.clientWidth - 80 || x(now) < box.scrollLeft) box.scrollLeft = x(now) - 120;
+  }
+}
+
+// ---- はじめ：ログインと管理者の確認 ----
+(async () => {
+  try {
+    const me = await api('/api/admin/whoami');
+    if (!me.signedIn) {
+      $('authMsg').innerHTML = 'ログインしていません。<a href="/">ヴォーカルトレーナー</a>でパスキーでログインしてから、このページを開き直してください。';
+      return;
+    }
+    if (!me.admin) {
+      $('authMsg').textContent = `${me.name} さん（会員番号 ${me.id}）は、まだ管理者ではありません。この会員番号を Claude に伝えてください。`;
+      return;
+    }
+    $('authMsg').hidden = true;
+    $('app').hidden = false;
+    $('song').innerHTML = SONGS.map((s) => `<option value="${s.id}">${s.title}</option>`).join('');
+    const ad = await api(`/api/hum/adopted?song=${song.id}`);
+    adoptedTake = ad?.takeId ?? null;
+    $('syl').value = ad?.value?.syllables || song.syllables;
+    $('from').innerHTML = [0, 15, 25, 33, 42, 50].map((t) => `<option value="${t}"${t === 15 ? ' selected' : ''}>${t}秒</option>`).join('');
+    await refreshList();
+  } catch (e) { setMsg($('authMsg'), `読み込めませんでした：${e.message}`, 'err'); }
+})();
+</script>
+</body>
+</html>
