@@ -1380,9 +1380,16 @@ const KEY_ACCS = { 0: 0, 1: 5, 2: 2, 3: 3, 4: 4, 5: 1, 6: 6, 7: 1, 8: 4, 9: 3, 1
 const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
   const el = $('score');
   el.innerHTML = '';
-  const H = song.lyrics ? 214 : 190;
+  const H = song.lyrics ? 222 : 190;
   const head = 78;
-  const widths = bars.map((b, k) => 46 + b.length * 40 + (k === 0 ? head + 12 * KEY_ACCS[((sh.shift % 12) + 12) % 12] : 0));
+  // 歌詞の言葉の幅（だいたい）：英字は1文字8.5px、かなや漢字は15px
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = '16px "Noto Sans JP", sans-serif';
+  const wordW = (wd) => measure.measureText(wd).width;
+  const lyricsOf = (bar) => (song.lyrics?.[bar[0]?.bar] || '').trim().split(/\s+/).filter(Boolean);
+  // 音符1つの幅は、歌詞の言葉がおさまるように広げる
+  const noteWs = (bar) => { const ly = lyricsOf(bar); let li = 0; return bar.map((n) => (n.midi == null ? 40 : Math.max(40, (ly[li++] ? wordW(ly[li - 1]) : 0) + 14))); };
+  const widths = bars.map((b, k) => 46 + noteWs(b).reduce((a, v) => a + v, 0) + (k === 0 ? head + 12 * KEY_ACCS[((sh.shift % 12) + 12) % 12] : 0));
   const w = widths.reduce((a, b) => a + b, 0) + 20;
   const r = new VF.Renderer(el, VF.Renderer.Backends.SVG);
   r.resize(w, H);
@@ -1405,8 +1412,9 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
     stave.setContext(ctx).draw();
     x += widths[k];
     // 歌詞（あれば）：音符の数だけ空白で区切った音節を、休符をとばして順に付ける
-    const lyr = (song.lyrics?.[bar[0]?.bar] || '').trim().split(/\s+/).filter(Boolean);
+    const lyr = lyricsOf(bar);
     let li = 0;
+    const words = []; // [StaveNote, 言葉]（あとで1本の線の上に並べて書く）
     const vn = bar.map((n) => {
       const dur = n.vf + (n.midi == null ? 'r' : '');
       if (n.midi == null) {
@@ -1422,14 +1430,21 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
       const label = S().names === 'doremi' ? DOREMI[n.letter] : pcName(m % 12, sh.flat);
       sn.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
       const word = lyr[li++];
-      if (word) sn.addModifier(new VF.Annotation(word).setFont('Noto Sans JP', 15, 'bold').setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
+      if (word) {
+        words.push([sn, word]);
+        // 見えない注釈で、言葉の幅だけ音符の場所をとらせる（並べ方を決める計算に入る）
+        const ghost = new VF.Annotation(word).setFont('Noto Sans JP', 16, 'normal').setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
+        ghost.setStyle({ fillStyle: 'rgba(0,0,0,0)', strokeStyle: 'rgba(0,0,0,0)' });
+        sn.addModifier(ghost, 0);
+      }
       return sn;
     });
     const voice = new VF.Voice({ num_beats: num, beat_value: den }).setMode(VF.Voice.Mode.SOFT);
     voice.addTickables(vn);
     vn.forEach((n) => n.setStave(stave));
     const beams = VF.Beam.generateBeams(vn.filter((n) => !n.isRest()));
-    new VF.Formatter().joinVoices([voice]).formatToStave([voice], stave);
+    // 歌詞のある曲は、音符の間をなるべく均等にする（短い音符にも言葉の場所をとる）
+    new VF.Formatter(song.lyrics ? { softmaxFactor: 2 } : {}).joinVoices([voice]).formatToStave([voice], stave);
     const top = stave.getYForLine(0) - 14;
     const hgt = stave.getYForLine(4) - stave.getYForLine(0) + 28;
     vn.forEach((n, j) => {
@@ -1442,6 +1457,24 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
     });
     voice.draw(ctx, stave);
     beams.forEach((b) => b.setContext(ctx).draw());
+    // 歌詞は、五線の下の決まった高さに1本の線のように並べる（音符の真下に中央そろえ。前の言葉と重なるときは右へずらす）
+    if (words.length) {
+      const y = stave.getYForLine(4) + 62;
+      ctx.save();
+      ctx.setFont('Noto Sans JP', 16, 'normal');
+      ctx.setFillStyle('#1d1a16');
+      let right = -Infinity;
+      words.forEach(([sn, wd]) => {
+        const cx = sn.getAbsoluteX() + 5;
+        const ww = wordW(wd);
+        const lx = Math.max(cx - ww / 2, right + 10);
+        ctx.fillText(wd, lx, y);
+        // 実際に書いた幅で、次の言葉の位置を決める（フォントの読み込み前の見積もりより正確）
+        const t = el.querySelector('svg')?.lastElementChild;
+        right = lx + (t && typeof t.getBBox === 'function' ? t.getBBox().width : ww);
+      });
+      ctx.restore();
+    }
     idx += bar.length;
   });
   const svg = el.querySelector('svg');
