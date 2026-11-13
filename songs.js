@@ -301,48 +301,79 @@ const SONGS = [
   },
   {
     "id": "hr-leave-the-bill",
+    "original": true,
     "title": "Leave the Bill",
     "composer": "羽ばたき塾オリジナル",
-    "credit": "ハードロック｜70年代のブルース系ハードロック（シャッフル）。ブルース音階の語るような歌い方・掛け声のサビ",
-    "time": "4/4",
-    "tempo": 119,
+    "credit": "ハードロック｜70年代のブルース系ハードロック（8分の6拍子）。ブルース音階の語るような歌い方・掛け声のサビ",
+    "time": "6/8",
+    "tempo": 178.5,
+    "click": 1.5,
     "mel": [
-      "g4/16 g4/16 g4/8 bb4/q d5/q d5/8 c5/8",
-      "bb4/8 g4/q. r/h",
-      "bb4/q d5/8 d5/8 d5/8 c5/8 bb4/8 g4/8",
-      "g4/8 g4/q. r/q r/8 bb4/8",
-      "bb4/8 a4/8 bb4/8 d5/8 d5/8 g4/8 f4/q",
-      "g4/q. r/8 r/h",
-      "bb4/8 g4/8 bb4/8 g4/8 bb4/8 g4/8 d5/8 c5/8",
-      "bb4/8 g4/q. r/h",
-      "r/w",
-      "r/w"
+      "g4/8 g4/8 g4/8 bb4/q.",
+      "d5/q. d5/q c5/8",
+      "bb4/q g4/h",
+      "r/h.",
+      "bb4/q. d5/q d5/8",
+      "d5/q c5/8 bb4/q g4/8",
+      "g4/q g4/h",
+      "r/q. r/q bb4/8",
+      "bb4/q a4/8 bb4/q d5/8",
+      "d5/q g4/8 f4/q.",
+      "g4/h r/8 r/8",
+      "r/h.",
+      "bb4/q g4/8 bb4/q g4/8",
+      "bb4/q g4/8 d5/q c5/8",
+      "bb4/q g4/h",
+      "r/h.",
+      "r/h.",
+      "r/h.",
+      "r/h.",
+      "r/h."
     ],
     "lyrics": [
-      "You brought a gold watch, I brought",
+      "You brought a gold",
+      "watch, I brought",
       "the bill",
-      "Your big talk's parked on a bor-",
-      "rowed hill I",
-      "count your change while you count your",
+      "",
+      "Your big talk's",
+      "parked on a bor-",
+      "rowed hill",
+      "I",
+      "count your change while",
+      "you count your",
       "friends",
-      "That grin gets ex- pen- sive when pay-",
+      "",
+      "That grin gets ex-",
+      "pen- sive when pay-",
       "day ends",
       "",
       "",
+      "",
+      "",
+      "",
+      "",
       "Hey, move it",
-      "o- ver, make room for the truth!",
+      "o- ver, make room",
+      "for the truth!",
+      "",
       "You talk like",
-      "a king with a hole in your",
-      "boot Hey, move it",
-      "o- ver, your tab's com- ing due!",
+      "a king with a",
+      "hole in your",
+      "boot",
+      "Hey, move it",
+      "o- ver, your tab's",
+      "com- ing due!",
+      "",
       "I've got the",
-      "re- ceipt, and I'm look- ing at",
-      "you"
+      "re- ceipt, and I'm",
+      "look- ing at",
+      "you",
+      ""
     ],
     "phrases": [
       [
         0,
-        10
+        20
       ]
     ],
     "stems": {
@@ -374,22 +405,22 @@ const SONGS = [
         }
       ],
       "bar1": 0.876,
-      "spb": 0.5042,
+      "spb": 0.25210084033613445,
       "sections": [
         {
           "name": "イントロ",
           "from": 0,
-          "to": 8
+          "to": 16
         },
         {
           "name": "Aメロ",
-          "from": 8,
-          "to": 18
+          "from": 16,
+          "to": 36
         },
         {
           "name": "サビ",
-          "from": 18,
-          "to": 27
+          "from": 36,
+          "to": 54
         }
       ]
     },

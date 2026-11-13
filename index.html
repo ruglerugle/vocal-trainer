@@ -780,7 +780,7 @@ body[data-mode="song"] #score svg { max-width: none; }
   </div>
 </dialog>
 
-<script src="songs.js?v=5"></script>
+<script src="songs.js?v=6"></script>
 <script src="timing.js?v=2"></script>
 <script src="assess.js?v=1"></script>
 <script src="record-sync.js?v=1"></script>
@@ -1442,7 +1442,10 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
     const voice = new VF.Voice({ num_beats: num, beat_value: den }).setMode(VF.Voice.Mode.SOFT);
     voice.addTickables(vn);
     vn.forEach((n) => n.setStave(stave));
-    const beams = VF.Beam.generateBeams(vn.filter((n) => !n.isRest()));
+    // 8分の6拍子などは付点4分音符（8分3つ）ずつ連桁でまとめる（休符で切る）
+    const beams = den === 8 && num % 3 === 0
+      ? VF.Beam.generateBeams(vn, { groups: VF.Beam.getDefaultBeamGroups(song.time) })
+      : VF.Beam.generateBeams(vn.filter((n) => !n.isRest()));
     // 歌詞のある曲は、音符の間をなるべく均等にする（短い音符にも言葉の場所をとる）
     new VF.Formatter(song.lyrics ? { softmaxFactor: 2 } : {}).joinVoices([voice]).formatToStave([voice], stave);
     const top = stave.getYForLine(0) - 14;
@@ -1532,7 +1535,11 @@ const MODE_INFO = {
   staff: { name: '五線譜', lane: '五線譜の道', desc: '音符を見て、聞かずに歌う（視唱）', icon: '🎼', bg: '#ece9fe' },
   long: { name: 'ロングトーン', lane: 'ロングトーンの道', desc: '同じ高さでまっすぐ伸ばす・音階をなぞる', icon: '🌬️', bg: '#e1f3ee' },
   song: { name: '曲', lane: '曲の道', desc: '知っている歌のメロディを、楽譜を見ながら歌う', icon: '🎶', bg: '#e8eef6' },
+  // オリジナル曲（original: true）も mode は 'song'。ホームの欄と見出しだけ分ける
+  orig: { name: 'オリジナル曲', lane: 'オリジナル曲', desc: '元の曲の音源に合わせて練習', icon: '🎸', bg: '#fde2e4' },
 };
+// 曲の欄の名前（song:i の曲がオリジナル曲なら 'orig'）
+const songLaneOf = (i) => (STAGES.song[i]?.song.original ? 'orig' : 'song');
 // ステージの道（曲の道は別あつかい）
 const MODES = ['match', 'interval', 'staff', 'long'];
 const needsBpm = () => mode === 'long' && (stageIdx === FREE || stageOf().kind === 'phrase');
@@ -1564,18 +1571,19 @@ const ringSvg = (frac) => {
   const c = 2 * Math.PI * r;
   return `<svg viewBox="0 0 92 92"><circle class="track" cx="46" cy="46" r="${r}" fill="none" stroke-width="9"/><circle class="fill" cx="46" cy="46" r="${r}" fill="none" stroke-width="9" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(1, frac))}"/></svg>`;
 };
-const songLane = () => {
-  const list = STAGES.song;
+// 曲の道（lane 'song'）とオリジナル曲（lane 'orig'）。番号は STAGES.song の通し番号のまま（記録・再生は song:i）
+const songLane = (lane) => {
+  const list = STAGES.song.map((s, i) => [s, i]).filter(([, i]) => songLaneOf(i) === lane);
   if (!list.length) return '';
-  const got = list.reduce((a, _, i) => a + bestStars('song', i), 0);
-  const nodes = list.map((s, i) => {
+  const got = list.reduce((a, [, i]) => a + bestStars('song', i), 0);
+  const nodes = list.map(([s, i]) => {
     const stars = bestStars('song', i);
     const part = s.locked && BILLING_ON;
     return `<button type="button" class="node ${stars ? 'done' : 'later'}" data-play="song:${i}" aria-label="曲 ${s.short}（★${stars}）">`
       + `<span class="dot">${stars ? '✓' : '♪'}</span>`
       + `<span><span class="nm">${s.short}${part ? '<span class="tag">最初のフレーズだけ無料</span>' : ''}</span><span class="st${stars ? '' : ' none'}">${starText(stars)}</span><span class="sub">${s.desc}</span></span></button>`;
   }).join('');
-  return `<div class="card lane">${laneHead('song', `<span class="cnt">★ ${got}/${list.length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
+  return `<div class="card lane">${laneHead(lane, `<span class="cnt">★ ${got}/${list.length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
 };
 // キャラクター（img/chara/*.svg、design/gen_chara.py で描く）
 const charaImg = (name, cls) => `<img class="chara ${cls}" src="/img/chara/${name}.svg?v=2" alt="" width="60" height="54">`;
@@ -1589,7 +1597,7 @@ const renderHome = () => {
       ? store.last.stage : (nx >= 0 ? nx : STAGES[lm].length - 1);
   const st = STAGES[lm][li];
   const fresh = !store.total.n;
-  $('continueCard').innerHTML = `<span class="kicker">${fresh ? 'まずはここから' : '続きから'}・${MODE_INFO[lm].lane}</span>`
+  $('continueCard').innerHTML = `<span class="kicker">${fresh ? 'まずはここから' : '続きから'}・${MODE_INFO[isSong ? songLaneOf(li) : lm].lane}</span>`
     + `<h2>${isSong ? st.short : `ステージ${li + 1}　${st.short}`}</h2><p>${st.desc}</p>`
     + `<span class="stars-line" aria-label="★${bestStars(lm, li)}">${starText(bestStars(lm, li))}</span>`
     + `<button type="button" class="big" data-play="${lm}:${li}">▶ ${fresh ? 'はじめる' : '続ける'}</button>`
@@ -1617,7 +1625,7 @@ const renderHome = () => {
         + `<span><span class="nm">${s.short}</span><span class="st${stars ? '' : ' none'}">${starText(stars)}</span><span class="sub">${s.desc}</span></span></button>`;
     }).join('');
     return `<div class="card lane">${laneHead(m, `<span class="cnt">★ ${starsOf(m)}/${STAGES[m].length * 3}</span>`)}<div class="path">${nodes}</div></div>`;
-  }).join('') + songLane();
+  }).join('') + songLane('song') + songLane('orig');
   $('premiumBanner').hidden = !(BILLING_ON && !account.paid);
   $('extras').innerHTML = MODES.map((m) => `<button type="button" class="tile${isLocked(m, FREE) ? ' locked' : ''}" data-play="${m}:${FREE}"><span class="ic" style="background:${MODE_INFO[m].bg}">${MODE_INFO[m].icon}</span><span><b>自由練習・${MODE_INFO[m].name}</b><small>${m === 'long' ? 'のばす練習と音階をまぜて5回' : '声域ぜんぶから、苦手を多めに。終わりなし'}</small></span></button>`).join('')
     + '<button type="button" class="tile" data-assess><span class="ic" style="background:#fff1d6">🎯</span><span><b>実力テスト</b><small id="assessLast">約3分。音合わせ6問と音程12問で、音程の正確さとレベル1〜10を測ります（無料）</small></span></button>'
@@ -1632,7 +1640,7 @@ const renderStageInfo = () => {
   if (mode === 'song') {
     const s = st.song;
     const part = s.locked ? `<br><span class="rule">無料版は最初のフレーズだけ（全${s.fullPhrases}フレーズ）</span>` : '';
-    $('stageInfo').innerHTML = `<b>${s.title}</b>${s.composer}。${s.credit}<br><span class="rule">クリア：全体で合った音が8割以上（${s.time}拍子・♩=${s.tempo}）</span><br><span class="rule">声域 ${rangeText()}</span>${part}`;
+    $('stageInfo').innerHTML = `<b>${s.title}</b>${s.composer}。${s.credit}<br><span class="rule">クリア：全体で合った音が8割以上（${s.time}拍子・${s.click === 1.5 ? `♩.=${Math.round(s.tempo / 1.5)}` : `♩=${s.tempo}`}）</span><br><span class="rule">声域 ${rangeText()}</span>${part}`;
     return;
   }
   if (!st) {
@@ -1649,7 +1657,7 @@ const renderStageInfo = () => {
 const setProg = (frac) => { $('playProg').style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`; };
 const renderPlayHead = () => {
   const st = stageOf();
-  $('playTitle').textContent = mode === 'song' ? `曲の道　${st.short}`
+  $('playTitle').textContent = mode === 'song' ? `${MODE_INFO[songLaneOf(stageIdx)].lane}　${st.short}`
     : `${MODE_INFO[mode].lane}　${st ? `ステージ${stageIdx + 1}・${st.short}` : '自由練習'}`;
 };
 const popJudge = (text, cls, sub = '') => {
