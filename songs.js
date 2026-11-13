@@ -300,64 +300,49 @@ const SONGS = [
     "fullPhrases": 6
   },
   {
-    "id": "hr-steel-highway",
-    "title": "鋼のハイウェイ",
+    "id": "hr-leave-the-bill",
+    "title": "Leave the Bill",
     "composer": "羽ばたき塾オリジナル",
-    "credit": "ハードロック｜70年代のブルース系ハードロック。ペンタトニックの旋律・サビの高音を伸ばす",
+    "credit": "ハードロック｜70年代のブルース系ハードロック（シャッフル）。ブルース音階の語るような歌い方・掛け声のサビ",
     "time": "4/4",
-    "tempo": 112,
+    "tempo": 119,
     "mel": [
-      "r/8 e4/8 e4/8 g4/8 a4/8 g4/8 e4/q",
-      "r/8 g4/8 a4/8 b4/8 a4/q g4/q",
-      "r/q e4/8 e4/8 g4/8 a4/8 g4/q",
-      "d4/8 e4/8 g4/8 a4/8 b4/h"
+      "g4/16 g4/16 g4/8 bb4/q d5/q d5/8 c5/8",
+      "bb4/8 g4/q. r/h",
+      "bb4/q d5/8 d5/8 d5/8 c5/8 bb4/8 g4/8",
+      "g4/8 g4/q. r/q r/8 bb4/8",
+      "bb4/8 a4/8 bb4/8 d5/8 d5/8 g4/8 f4/q",
+      "g4/q. r/8 r/h",
+      "bb4/8 g4/8 bb4/8 g4/8 bb4/8 g4/8 d5/8 c5/8",
+      "bb4/8 g4/q. r/h",
+      "r/w",
+      "r/w"
     ],
     "lyrics": [
-      "よ る を さ い て",
-      "は し り だ せ",
-      "え ん じ ん が",
-      "ほ え て い る",
-      "は が ね の み ち を",
-      "ど こ ま で も",
-      "と ま ら な い",
-      "こ ど う の ま ま に"
+      "You brought a gold watch, I brought",
+      "the bill",
+      "Your big talk's parked on a bor-",
+      "rowed hill I",
+      "count your change while you count your",
+      "friends",
+      "That grin gets ex- pen- sive when pay-",
+      "day ends",
+      "",
+      "",
+      "Hey, move it",
+      "o- ver, make room for the truth!",
+      "You talk like",
+      "a king with a hole in your",
+      "boot Hey, move it",
+      "o- ver, your tab's com- ing due!",
+      "I've got the",
+      "re- ceipt, and I'm look- ing at",
+      "you"
     ],
     "phrases": [
       [
         0,
-        4
-      ]
-    ],
-    "locked": true,
-    "fullPhrases": 2
-  },
-  {
-    "id": "fk-funky-night",
-    "title": "ファンキー・ナイト",
-    "composer": "羽ばたき塾オリジナル",
-    "credit": "ファンク｜70年代のファンク。16分の裏から入るリズム・短く切る歌い方",
-    "time": "4/4",
-    "tempo": 100,
-    "mel": [
-      "r/8 e4/16 e4/16 r/16 g4/16 e4/8 r/16 g4/16 a4/8 r/q",
-      "r/8 b4/16 a4/16 r/16 g4/16 a4/8 r/16 g4/16 e4/8 r/q",
-      "r/8 e4/16 e4/16 r/16 g4/16 e4/8 r/16 g4/16 b4/8 r/q",
-      "r/8 a4/16 g4/16 r/16 e4/16 d4/8 e4/h"
-    ],
-    "lyrics": [
-      "ゆ び を な ら せ",
-      "り ず む に の れ",
-      "と ま ら な い で",
-      "か ら だ ご と",
-      "ふぁ ん き ー な い と",
-      "お ど り あ か せ",
-      "ふぁ ん き ー な い と",
-      "ゆ め の な か で"
-    ],
-    "phrases": [
-      [
-        0,
-        4
+        10
       ]
     ],
     "locked": true,
