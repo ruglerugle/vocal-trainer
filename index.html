@@ -344,7 +344,8 @@ body[data-mode="staff"] .sheet { max-width: 360px; }
 .result .controls { margin-top: 10px; }
 .song-mixer { width: 100%; max-width: 760px; margin: 6px auto 0; text-align: left; }
 .song-mixer h3 { margin: 0 0 8px; font-size: .95rem; }
-.sing { margin: 0 0 18px; display: grid; gap: 8px; }
+.sing { width: 100%; max-width: 760px; margin: 0 auto 14px; display: grid; gap: 8px; text-align: left; }
+.sing h3 { margin: 0; font-size: 1.05rem; }
 .sing .trail-box { max-width: none; }
 #singCv { display: block; width: 100%; height: 220px; }
 @media (max-width: 560px) { #singCv { height: 180px; } }
@@ -539,6 +540,12 @@ body[data-mode="song"] #score svg { max-width: none; }
       <div id="cue" class="cue" aria-live="polite"></div>
       <div id="assessBanner" hidden></div>
       <div id="prompt" class="prompt" aria-live="polite"></div>
+      <div id="singBox" class="sing" hidden>
+        <h3>原曲に合わせて歌う</h3>
+        <p class="sing-note">ピンクの線が元の歌の高さです。自分の声の線が重なると緑になります。オクターブ違いでも高さが合っていれば正解です（男声・女声どちらでも）。<b>イヤホンで</b>聞いてください（スピーカーの音をマイクが拾うと、正しく判定できません）。</p>
+        <div class="trail-box"><canvas id="singCv" aria-label="元の歌の高さと自分の声の高さのグラフ"></canvas></div>
+        <div class="sing-bar"><button id="singBtn" class="gold" type="button">🎤 歌う（マイク・再生）</button><span id="singScore" class="sing-score" aria-live="polite"></span></div>
+      </div>
       <div class="sheet" id="sheetBox"><div id="score" role="img" aria-label="楽譜"></div></div>
       <div class="meter" aria-hidden="true">
         <div class="read" id="read"><b id="readNote">—</b><span id="readCents">声を待っています</span></div>
@@ -554,12 +561,6 @@ body[data-mode="song"] #score svg { max-width: none; }
         <button id="demoBtn" class="ghost" type="button">♪ お手本を聞く</button>
       </div>
       <div id="songMixerBox" class="song-mixer" hidden>
-        <div id="singBox" class="sing" hidden>
-          <h3>原曲に合わせて歌う</h3>
-          <p class="sing-note">ピンクの線が元の歌の高さです。自分の声の線が重なると緑になります。オクターブ違いでも高さが合っていれば正解です（男声・女声どちらでも）。<b>イヤホンで</b>聞いてください（スピーカーの音をマイクが拾うと、正しく判定できません）。</p>
-          <div class="trail-box"><canvas id="singCv" aria-label="元の歌の高さと自分の声の高さのグラフ"></canvas></div>
-          <div class="sing-bar"><button id="singBtn" class="gold" type="button">🎤 歌う（マイク・再生）</button><span id="singScore" class="sing-score" aria-live="polite"></span></div>
-        </div>
         <h3>元の曲（パート別の音量）</h3><div id="songMixer"></div>
       </div>
       <p id="inputNote" class="kb-note"></p>
@@ -1693,6 +1694,8 @@ const closeSongMixer = () => {
   if (songMixer) songMixer.mx.destroy();
   songMixer = null;
   $('songMixerBox').hidden = true;
+  $('singBox').hidden = true;
+  sing.id = null;
 };
 const stopSongMixer = () => { if (songMixer) songMixer.mx.stop(); };
 const pauseSongMixer = () => { if (songMixer) songMixer.mx.pause(); };
