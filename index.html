@@ -344,6 +344,13 @@ body[data-mode="staff"] .sheet { max-width: 360px; }
 .result .controls { margin-top: 10px; }
 .song-mixer { width: 100%; max-width: 760px; margin: 6px auto 0; text-align: left; }
 .song-mixer h3 { margin: 0 0 8px; font-size: .95rem; }
+.sing { margin: 0 0 18px; display: grid; gap: 8px; }
+.sing .trail-box { max-width: none; }
+#singCv { display: block; width: 100%; height: 220px; }
+@media (max-width: 560px) { #singCv { height: 180px; } }
+.sing-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.sing-score { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sing-note { margin: 0; font-size: .82rem; color: var(--muted); }
 .play .result button.ghost { background: var(--paper); color: var(--accent); box-shadow: 0 0 0 2px var(--line) inset, 0 3px 0 var(--line); }
 .play .result button.ghost:hover:not(:disabled) { background: var(--accent-soft); }
 .result .best { font-style: normal; font-weight: 700; color: #fff; background: var(--ok); border-radius: 999px; padding: 2px 12px; font-size: .85rem; animation: starPop .5s 1s both; }
@@ -546,7 +553,15 @@ body[data-mode="song"] #score svg { max-width: none; }
         <button id="stopBtn" class="ghost" type="button" hidden>■ やめる</button>
         <button id="demoBtn" class="ghost" type="button">♪ お手本を聞く</button>
       </div>
-      <div id="songMixerBox" class="song-mixer" hidden><h3>元の曲（パート別の音量）</h3><div id="songMixer"></div></div>
+      <div id="songMixerBox" class="song-mixer" hidden>
+        <div id="singBox" class="sing" hidden>
+          <h3>原曲に合わせて歌う</h3>
+          <p class="sing-note">ピンクの線が元の歌の高さです。自分の声の線が重なると緑になります。オクターブ違いでも高さが合っていれば正解です（男声・女声どちらでも）。<b>イヤホンで</b>聞いてください（スピーカーの音をマイクが拾うと、正しく判定できません）。</p>
+          <div class="trail-box"><canvas id="singCv" aria-label="元の歌の高さと自分の声の高さのグラフ"></canvas></div>
+          <div class="sing-bar"><button id="singBtn" class="gold" type="button">🎤 歌う（マイク・再生）</button><span id="singScore" class="sing-score" aria-live="polite"></span></div>
+        </div>
+        <h3>元の曲（パート別の音量）</h3><div id="songMixer"></div>
+      </div>
       <p id="inputNote" class="kb-note"></p>
     </section>
   </div>
@@ -786,7 +801,7 @@ body[data-mode="song"] #score svg { max-width: none; }
 <script src="record-sync.js?v=1"></script>
 <script src="billing.js?v=2"></script>
 <script src="studio.js?v=1"></script>
-<script src="mixer.js?v=1"></script>
+<script src="mixer.js?v=2"></script>
 <script src="demo.js?v=1"></script>
 <script>
 'use strict';
@@ -1149,6 +1164,7 @@ const loopTick = () => {
   if (!mic.on) return;
   const { now, m } = tickPitch();
   if (run) runTick(now, m);
+  if (sing.on) singTick(m);
   if (rg.active) rangeTick(now, m);
   if (calib) calib.frames.push({ t: now, raw: mic.trail[mic.trail.length - 1].raw });
   if (view === 'play') { updateReadout(m); drawTrail(now); }
@@ -1685,8 +1701,180 @@ const syncSongMixer = (song) => {
   closeSongMixer();
   if (!song?.stems) return;
   $('songMixerBox').hidden = false;
-  songMixer = { id: song.id, mx: Mixer.create($('songMixer'), { id: song.id, ...song.stems, mine: 'vocal' }) };
+  songMixer = { id: song.id, mx: Mixer.create($('songMixer'), { id: song.id, ...song.stems, mine: 'vocal', onState: singState }) };
+  loadSingLine(song);
 };
+// ---- 原曲に合わせて歌う：元の歌（パート別の歌だけの音）から作った高さの線（vocal-pitch.json、genre-songs/pitch_line.py）に声を重ねて判定する ----
+const SING_TOL = 50; // セント。語るような歌い方で線が揺れるので、半音の半分まで合っていれば正解
+const sing = { id: null, line: null, rate: 50, lo: 55, hi: 74, on: false, playing: false, pts: [], tgt: 0, hit: 0, voiced: 0, shift: 0, raf: 0 };
+const pctl = (a, q) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.max(0, Math.round(q * (b.length - 1))))]; };
+const singReset = () => { sing.pts = []; sing.tgt = 0; sing.hit = 0; sing.voiced = 0; $('singScore').textContent = ''; };
+const loadSingLine = (song) => {
+  $('singBox').hidden = true;
+  sing.id = song.id;
+  sing.line = null;
+  fetch(`${song.stems.base}vocal-pitch.json`)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`高さの線を読めませんでした（${r.status}）`))))
+    .then((d) => {
+      if (sing.id !== song.id) return;
+      const v = d.midi.filter((x) => x != null);
+      if (!v.length) throw new Error('高さの線が空です');
+      sing.line = d.midi;
+      sing.rate = d.rate;
+      sing.lo = Math.floor(pctl(v, 0.02)) - 3;
+      sing.hi = Math.ceil(pctl(v, 0.98)) + 3;
+      $('singBox').hidden = false;
+      singReset();
+      singDraw();
+    })
+    .catch((e) => console.warn('原曲に合わせて歌う画面は出しません', e));
+};
+const lineAt = (t) => { const i = Math.round(t * sing.rate); return sing.line && i >= 0 && i < sing.line.length ? sing.line[i] : null; };
+// いちばん近い元の歌の高さ（前後0.08秒まで。出だしが少しずれても判定する）
+const lineNear = (t) => { for (const dt of [0, -0.04, 0.04, -0.08, 0.08]) { const m = lineAt(t + dt); if (m != null) return m; } return null; };
+// 声を出してからマイクで高さが分かるまでの遅れ ＋ 曲の音がスピーカーから出るまでの遅れ（秒）
+const singLag = () => (S().latency ?? DEFAULT_LATENCY) / 1000 + (songMixer ? songMixer.mx.outLatency : 0);
+const singScoreText = (done) => {
+  if (sing.tgt < 25) return done ? '歌う所まで進んでから止めると、点が出ます。' : '';
+  const p = Math.round((sing.hit / sing.tgt) * 100);
+  const best = store.singBest?.[sing.id];
+  return `${done ? '今回' : 'いま'}：合っていた所 ${p}%（声を出せていた所 ${Math.round((sing.voiced / sing.tgt) * 100)}%）${best != null ? `　自己ベスト ${best}%` : ''}`;
+};
+const singTick = (m) => {
+  if (!songMixer?.mx.playing || !sing.line) return;
+  const ts = songMixer.mx.position - singLag();
+  const target = lineNear(ts);
+  let show = null;
+  let ok = false;
+  if (m != null) {
+    // オクターブ違いは、元の歌のオクターブに寄せて判定・表示する
+    if (target != null) sing.shift = Math.round((target - m) / 12) * 12;
+    show = m + sing.shift;
+    ok = target != null && Math.abs(show - target) * 100 <= SING_TOL;
+  }
+  if (target != null) { sing.tgt++; if (m != null) sing.voiced++; if (ok) sing.hit++; }
+  sing.pts.push({ ts, m: show, ok });
+  if (sing.pts.length > 4000) sing.pts.splice(0, 1000);
+  $('singScore').textContent = singScoreText(false);
+};
+const singFinish = () => {
+  if (!sing.on) return;
+  sing.on = false;
+  $('singBtn').textContent = '🎤 歌う（マイク・再生）';
+  const text = singScoreText(true);
+  if (sing.tgt >= 25) {
+    const p = Math.round((sing.hit / sing.tgt) * 100);
+    store.singBest = store.singBest || {};
+    const prev = store.singBest[sing.id];
+    if (prev == null || p > prev) { store.singBest[sing.id] = p; saveStore(); }
+  }
+  $('singScore').textContent = text;
+};
+const singDraw = () => {
+  const cv = $('singCv');
+  const w = cv.clientWidth;
+  const h = cv.clientHeight;
+  if (!w || !h || !sing.line) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const pos = songMixer ? songMixer.mx.position : 0;
+  const BEFORE = 2.5; // いまの位置より前（左）に見せる秒
+  const AFTER = 4;    // これから（右）に見せる秒
+  const xNow = w * (BEFORE / (BEFORE + AFTER));
+  const xOf = (t) => xNow + ((t - pos) / (BEFORE + AFTER)) * w;
+  const { lo, hi } = sing;
+  const yOf = (m) => h - ((m - lo) / (hi - lo)) * h;
+  g.font = '11px "Noto Sans JP", sans-serif';
+  g.textBaseline = 'middle';
+  for (let k = Math.ceil(lo); k <= Math.floor(hi); k++) {
+    const nat = isNatural(k % 12);
+    g.strokeStyle = nat ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.035)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, yOf(k)); g.lineTo(w, yOf(k)); g.stroke();
+    if (nat) { g.fillStyle = 'rgba(255,220,236,.4)'; g.fillText(noteLabel(k), 4, yOf(k)); }
+  }
+  // 元の歌の線（太い薄い帯＝判定の幅）
+  const i0 = Math.max(0, Math.floor((pos - BEFORE) * sing.rate));
+  const i1 = Math.min(sing.line.length - 1, Math.ceil((pos + AFTER) * sing.rate));
+  const path = () => {
+    g.beginPath();
+    let pen = false;
+    for (let i = i0; i <= i1; i++) {
+      const m = sing.line[i];
+      if (m == null) { pen = false; continue; }
+      const x = xOf(i / sing.rate);
+      if (pen) g.lineTo(x, yOf(m)); else g.moveTo(x, yOf(m));
+      pen = true;
+    }
+  };
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.strokeStyle = 'rgba(255,122,184,.22)';
+  g.lineWidth = Math.max(4, yOf(lo) - yOf(lo + (2 * SING_TOL) / 100));
+  path(); g.stroke();
+  g.strokeStyle = 'rgba(255,122,184,.95)';
+  g.lineWidth = 2.5;
+  path(); g.stroke();
+  // いまの位置
+  g.strokeStyle = 'rgba(255,255,255,.3)';
+  g.lineWidth = 1;
+  g.beginPath(); g.moveTo(xNow, 0); g.lineTo(xNow, h); g.stroke();
+  // 自分の声（合っている所は緑）
+  g.lineWidth = 3.5;
+  let prev = null;
+  sing.pts.forEach((p) => {
+    if (p.m == null || p.ts < pos - BEFORE - 0.5 || p.ts > pos + 0.2) { prev = null; return; }
+    if (prev && p.ts > prev.ts && p.ts - prev.ts < 0.12) {
+      g.strokeStyle = p.ok ? '#4ade80' : '#ffd0e6';
+      g.beginPath(); g.moveTo(xOf(prev.ts), yOf(prev.m)); g.lineTo(xOf(p.ts), yOf(p.m)); g.stroke();
+    }
+    prev = p;
+  });
+  if (!sing.on && !songMixer?.mx.playing) {
+    g.fillStyle = 'rgba(255,220,236,.65)';
+    g.font = '14px "Noto Sans JP", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('「歌う」を押すと、マイクがオンになって曲が流れます', w / 2, h / 2);
+    g.textAlign = 'start';
+  }
+};
+const singLoop = () => {
+  cancelAnimationFrame(sing.raf);
+  const step = () => {
+    singDraw();
+    if (songMixer?.mx.playing) sing.raf = requestAnimationFrame(step);
+  };
+  sing.raf = requestAnimationFrame(step);
+};
+// ミキサーの再生・停止に合わせる（ミキサーの ▶ で始めたときも、マイクがオンなら判定する）
+function singState(playing) {
+  if (playing) {
+    if (!sing.playing) {
+      singReset();
+      if (mic.on && sing.line) { stopRun(false); sing.on = true; $('singBtn').textContent = '■ やめる'; }
+    }
+    sing.playing = true;
+    singLoop();
+  } else {
+    sing.playing = false;
+    singFinish();
+    singDraw();
+  }
+}
+$('singBtn').addEventListener('click', async () => {
+  if (!songMixer || !sing.line) return;
+  if (sing.on || songMixer.mx.playing) { songMixer.mx.stop(); return; }
+  if (isLocked(mode, stageIdx)) { openUpsell('このステージは有料版で練習できます。'); return; }
+  stopRun(false);
+  Demo.stop();
+  const ok = await startMic();
+  if (!ok) { $('singScore').textContent = $('micStatus').title.replace('：', '。'); return; }
+  songMixer.mx.play();
+});
+window.addEventListener('resize', () => { if (!$('singBox').hidden) singDraw(); });
 // 元の曲を再生したら、お手本は止める（2つの音を重ねない）
 $('songMixer').addEventListener('click', (e) => {
   if (e.target instanceof Element && e.target.closest('[data-mx="play"]')) Demo.stop();
