@@ -345,6 +345,54 @@ const SONGS = [
         10
       ]
     ],
+    "stems": {
+      "base": "audio/songs/hr-leave-the-bill/",
+      "tracks": [
+        {
+          "id": "vocal",
+          "label": "歌"
+        },
+        {
+          "id": "backing",
+          "label": "コーラス"
+        },
+        {
+          "id": "guitar",
+          "label": "ギター"
+        },
+        {
+          "id": "bass",
+          "label": "ベース"
+        },
+        {
+          "id": "drums",
+          "label": "ドラム"
+        },
+        {
+          "id": "other",
+          "label": "その他"
+        }
+      ],
+      "bar1": 0.876,
+      "spb": 0.5042,
+      "sections": [
+        {
+          "name": "イントロ",
+          "from": 0,
+          "to": 8
+        },
+        {
+          "name": "Aメロ",
+          "from": 8,
+          "to": 18
+        },
+        {
+          "name": "サビ",
+          "from": 18,
+          "to": 27
+        }
+      ]
+    },
     "locked": true,
     "fullPhrases": 2
   }
