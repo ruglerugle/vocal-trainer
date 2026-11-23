@@ -114,13 +114,8 @@ a { color: var(--gold); }
 'use strict';
 const $ = (id) => document.getElementById(id);
 // 採譜できる曲（grid：小節1の頭の秒・6/8 の1小節の秒・歌の楽譜の最初と最後の小節）
-const SONGS = [{
-  id: 'hr-leave-the-bill', title: 'Leave the Bill',
-  grid: { bar1: 0.876, barsec: 1.0084, firstBar: 16, lastBar: 54, steps: 12 },
-  vocalFrom: 16, vocalTo: 56,
-  tracks: ['vocal', 'backing', 'guitar', 'bass', 'drums', 'other'],
-  syllables: "You brought a gold watch I brought the bill Your big talk's parked on a bor- rowed hill I count your change while you count your friends That grin gets ex- pen- sive when pay- day ends Hey move it o- ver make room for the truth You talk like a king with a hole in your boot Hey move it o- ver your tab's com- ing due I've got the re- ceipt and I'm look- ing at you",
-}];
+const SONGS = [];
+// 例（曲を足すとき）：{ id: 'my-song', title: '曲名', grid: { bar1: 0, barsec: 1, firstBar: 1, lastBar: 8, steps: 12 }, vocalFrom: 0, vocalTo: 10, tracks: ['vocal', 'backing'], syllables: '…' }
 const REC_SR = 16000; // 保存する録音のサンプリング周波数
 const api = async (url, opt = {}) => {
   const r = await fetch(url, { credentials: 'same-origin', ...opt });
@@ -132,7 +127,7 @@ const post = (url, body) => api(url, { method: 'POST', headers: { 'Content-Type'
 const setMsg = (el, text, cls = '') => { el.textContent = text; el.className = `msg ${cls}`; };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-let song = SONGS[0];
+let song = SONGS[0] || null; // 曲が1つもないときは null
 let ctx = null;
 const audio = () => { ctx = ctx || new AudioContext({ latencyHint: 'interactive' }); if (ctx.state === 'suspended') ctx.resume(); return ctx; };
 const bufCache = new Map();
@@ -491,6 +486,10 @@ function drawRoll(now = null) {
     }
     if (!me.admin) {
       $('authMsg').textContent = `${me.name} さん（会員番号 ${me.id}）は、まだ管理者ではありません。この会員番号を Claude に伝えてください。`;
+      return;
+    }
+    if (!song) {
+      $('authMsg').textContent = '採譜できる曲が登録されていません。';
       return;
     }
     $('authMsg').hidden = true;
