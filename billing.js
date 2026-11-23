@@ -142,8 +142,8 @@ const renderPlan = () => {
     status = `${account.name} でログイン中（練習の記録は端末どうしで同期されます）。有料版にすると、すべてのステージと曲を練習できます（${PRICE_LABEL}）。`;
     btns = btn('buy', `有料版にする（${PRICE_LABEL}）`) + (account.customer ? btn('portal', 'お支払いの履歴', true) : '') + btn('security', 'ログインと端末', true) + btn('logout', 'ログアウト', true);
   } else {
-    status = `有料版（${PRICE_LABEL}）にすると、すべてのステージと曲を練習できます。無料の会員登録だけでも、練習の記録をスマホとパソコンで同期できます。`;
-    btns = btn('buy', `有料版にする（${PRICE_LABEL}）`) + btn('signup', '記録を同期する（無料）', true) + btn('login', 'ログイン', true);
+    status = `有料版（${PRICE_LABEL}）にすると、すべてのステージと曲を練習できます。「無料で会員登録」だけでも、練習の記録をスマホとパソコンで同期できます。`;
+    btns = btn('buy', `有料版にする（${PRICE_LABEL}）`) + btn('signup', '無料で会員登録（はじめての方）') + btn('login', 'ログイン（登録済みの方）');
   }
   $('planStatus').textContent = status + (account.signedIn && !account.hasEmail ? '（「ログインと端末」でメールアドレスを登録しておくと、端末をなくしても自分でログインし直せます）' : '');
   $('planBtns').innerHTML = btns;
