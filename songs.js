@@ -359,6 +359,12 @@ const SONGS = [
       ],
       "bar1": 0,
       "spb": 0.46875,
+      "alt": {
+        "id": "original",
+        "label": "原曲（Suno）",
+        "bar1": 0.095,
+        "spb": 0.46519
+      },
       "sections": [
         {
           "name": "イントロ",
