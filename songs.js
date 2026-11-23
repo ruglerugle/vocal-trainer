@@ -359,6 +359,7 @@ const SONGS = [
       ],
       "bar1": 0,
       "spb": 0.46875,
+      "ver": "20261124b",
       "alt": {
         "label": "原曲（Suno）",
         "bar1": 0.095,
