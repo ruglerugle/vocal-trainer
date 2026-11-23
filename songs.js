@@ -298,5 +298,81 @@ const SONGS = [
     ],
     "locked": true,
     "fullPhrases": 6
+  },
+  {
+    "id": "cp-shuden-no-atode",
+    "original": true,
+    "title": "終電のあとで",
+    "composer": "羽ばたき塾オリジナル",
+    "credit": "シティポップ｜ニ短調のシティポップ（♩=128）。メジャーセブンス・テンションの効いたコードの上の、夜の街の歌。16分のシンコペーションで言葉をのせる・サビの「終電は見送って」の繰り返し",
+    "time": "4/4",
+    "tempo": 128,
+    "mel": [
+      "r/w",
+      "r/w",
+      "r/w",
+      "r/w",
+      "r/q r/16 f4/8 f4/16 e4/8 d4/8 c4/8 r/8",
+      "c#4/8 e4/8. g4/q r/8. r/q",
+      "r/8 f4/8 e4/16 d4/8 c4/8 d4/16 r/8 f4/8 g4/8",
+      "g4/8. f4/q. r/8. r/q"
+    ],
+    "lyrics": [
+      "",
+      "",
+      "",
+      "",
+      "き れ か け の",
+      "ね お ん",
+      "み ず た ま り で ゆ",
+      "れ た"
+    ],
+    "phrases": [
+      [
+        4,
+        8
+      ]
+    ],
+    "stems": {
+      "base": "audio/songs/cp-shuden-no-atode/",
+      "tracks": [
+        {
+          "id": "vocal",
+          "label": "歌"
+        },
+        {
+          "id": "keys",
+          "label": "鍵盤"
+        },
+        {
+          "id": "guitar",
+          "label": "ギター"
+        },
+        {
+          "id": "bass",
+          "label": "ベース"
+        },
+        {
+          "id": "drums",
+          "label": "ドラム"
+        }
+      ],
+      "bar1": 0,
+      "spb": 0.46875,
+      "sections": [
+        {
+          "name": "イントロ",
+          "from": 0,
+          "to": 4
+        },
+        {
+          "name": "Aメロ",
+          "from": 4,
+          "to": 8
+        }
+      ]
+    },
+    "locked": true,
+    "fullPhrases": 6
   }
 ];
