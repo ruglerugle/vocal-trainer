@@ -338,11 +338,7 @@ const SONGS = [
       "tracks": [
         {
           "id": "vocal",
-          "label": "歌"
-        },
-        {
-          "id": "keys",
-          "label": "鍵盤"
+          "label": "ヴォーカル"
         },
         {
           "id": "guitar",
@@ -359,7 +355,7 @@ const SONGS = [
       ],
       "bar1": 0,
       "spb": 0.46875,
-      "ver": "20261124b",
+      "ver": "20261124c",
       "alt": {
         "label": "原曲（Suno）",
         "bar1": 0.095,
@@ -367,13 +363,8 @@ const SONGS = [
         "tracks": [
           {
             "id": "original-vocals",
-            "label": "歌",
+            "label": "ヴォーカル",
             "part": "vocal"
-          },
-          {
-            "id": "original-keys",
-            "label": "鍵盤",
-            "part": "keys"
           },
           {
             "id": "original-guitar",
@@ -389,10 +380,6 @@ const SONGS = [
             "id": "original-drums",
             "label": "ドラム",
             "part": "drums"
-          },
-          {
-            "id": "original-other",
-            "label": "その他"
           }
         ]
       },
