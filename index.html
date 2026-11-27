@@ -446,8 +446,40 @@ body[data-mode="song"] #score svg { max-width: none; }
 .lap-line { min-height: 1.3em; text-align: center; font-size: .86rem; color: var(--gold); letter-spacing: .04em; }
 #practiceBar { margin-top: 4px; }
 #tmeter { margin: 2px auto 4px; }
+/* ---- 一画面に収める（楽譜と音程の表示を、スクロールなしで同時に見せる） ---- */
+body[data-view="play"] .play { padding-top: 6px; padding-bottom: 12px; }
+body[data-view="play"] .playbar { padding-bottom: 6px; }
+body[data-view="play"] .stage { gap: 8px; }
+#sheetBox { scroll-behavior: smooth; }
+body:not([data-mode="song"]) #score svg { max-height: 28vh; max-height: 28dvh; min-height: 110px; }
+#trail, #singCv { height: clamp(100px, 24vh, 220px); height: clamp(100px, 24dvh, 220px); }
+@media (max-height: 760px) {
+  .kb-note, .lap-line:empty { display: none; }
+  .feedback { min-height: 1.3em; font-size: .95rem; }
+  .prompt { min-height: 1.2em; font-size: .95rem; }
+  .prompt .big { font-size: 1.8rem; }
+  .meter { padding: 6px 12px; }
+  .sheet { padding: 6px; }
+  #trail, #singCv { height: clamp(90px, 20vh, 180px); height: clamp(90px, 20dvh, 180px); }
+}
+@media (max-height: 560px) {
+  .play { padding-left: 10px; padding-right: 10px; }
+  .sing-note, .stage-info .rule { display: none; }
+  .intro { padding: 10px 14px; gap: 8px; }
+  #trail, #singCv { height: clamp(70px, 26vh, 140px); height: clamp(70px, 26dvh, 140px); }
+  body:not([data-mode="song"]) #score svg { max-height: 40vh; max-height: 40dvh; min-height: 90px; }
+}
+/* 横向きの短い画面：楽譜を左、音程の表示を右に並べる */
+@media (orientation: landscape) and (max-height: 560px) and (min-width: 700px) {
+  .play { max-width: none; }
+  .stage { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; justify-items: stretch; }
+  .stage > * { grid-column: 1 / -1; }
+  .stage > .sheet { grid-column: 1; grid-row: 3 / span 5; max-width: none; }
+  .stage > .meter, .stage > .trail-box { grid-column: 2; max-width: none; }
+  .stage > .feedback { grid-column: 2; }
+}
 </style>
-<link rel="stylesheet" href="studio.css?v=5">
+<link rel="stylesheet" href="studio.css?v=6">
 </head>
 <body data-view="home" data-mode="match">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1549,7 +1581,10 @@ const renderSong = (song, bars, sh, { status = [], cur = -1 } = {}) => {
   if (cur >= 0 && box.scrollWidth > box.clientWidth) {
     let n = 0;
     const curBar = bars.findIndex((b) => (n += b.length) > cur);
-    box.scrollLeft = Math.max(0, widths.slice(0, curBar).reduce((a, b) => a + b, 0) - box.clientWidth / 3);
+    // 小節の頭で急に動かないよう、小節の中の位置の分だけ少しずつ進める
+    const before = bars.slice(0, curBar).reduce((a, b) => a + b.length, 0);
+    const frac = bars[curBar] ? (cur - before) / bars[curBar].length : 0;
+    box.scrollLeft = Math.max(0, widths.slice(0, curBar).reduce((a, b) => a + b, 0) + widths[curBar] * frac - box.clientWidth / 3);
   } else if (cur < 0) box.scrollLeft = 0;
 };
 
